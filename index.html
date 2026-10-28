@@ -1794,9 +1794,11 @@
                 targetId: 'sim-mil-panel',
                 dimOpacity: 0.58,
                 onEnter: () => {
-                    setSidebarCollapsed(false);
                     setViewDimension('2D');
                     setMode('SIM');
+                    simMilBody?.classList.remove('hidden-visually');
+                    iconSimMilChevron?.classList.remove('-rotate-90');
+                    setSidebarCollapsed(false);
                 }
             },
             {
@@ -1805,7 +1807,6 @@
                 targetId: 'sim-scenario-controls',
                 dimOpacity: 0.55,
                 onEnter: () => {
-                    setSidebarCollapsed(false);
                     if (State.mode !== 'SIM') setMode('SIM');
                     if (State.viewDimension !== '2D') setViewDimension('2D');
                     if (!State.simFlight) {
@@ -1816,6 +1817,8 @@
                         resetSimulatorUI();
                         pauseForQuiz();
                     }
+                    // Expand the bottom drawer after pauseForQuiz() so #sim-scenario-controls is visible on mobile
+                    setSidebarCollapsed(false);
                 }
             },
             {
@@ -1824,8 +1827,8 @@
                 targetId: 'quiz-container',
                 dimOpacity: 0.65,
                 onEnter: () => {
-                    setSidebarCollapsed(false);
                     if (State.mode !== 'SIM') setMode('SIM');
+                    if (State.viewDimension !== '2D') setViewDimension('2D');
                     if (!State.simFlight) {
                         generateScenario();
                     } else if (State.simState !== 'PAUSED') {
@@ -1833,6 +1836,13 @@
                         State.explanationPlaying = false;
                         resetSimulatorUI();
                         pauseForQuiz();
+                    }
+                    if (isMobileView()) {
+                        setSidebarCollapsed(true);
+                        quizBodyContent?.classList.remove('hidden-visually');
+                        iconQuizChevron?.classList.remove('rotate-180');
+                    } else {
+                        setSidebarCollapsed(false);
                     }
                     if (State.simFlight && State.userSequence.length === 0) {
                         State.userSequence = getFullSectorSequence(State.simFlight, State.simFlight.progress);
@@ -1857,6 +1867,8 @@
                     }
                     evaluateQuiz();
                     startExplanation();
+                    expDetailsBody?.classList.remove('hidden-visually');
+                    iconExpChevron?.classList.remove('rotate-180');
                 }
             }
         ];
@@ -1889,7 +1901,9 @@
             let bottom = rawRect.bottom;
 
             // Clamp to scrollable parent container if inside sidebar panels
-            const scrollParent = highlightedTourEl.closest('#panel-editor, #panel-sim');
+            const scrollParent = isMobileView()
+                ? highlightedTourEl.closest('#sidebar-body-wrapper')
+                : highlightedTourEl.closest('#panel-editor, #panel-sim');
             if (scrollParent) {
                 const parentRect = scrollParent.getBoundingClientRect();
                 top = Math.max(top, parentRect.top);
@@ -2044,6 +2058,9 @@
         }
 
         window.addEventListener('resize', () => {
+            if (tourActive) positionTourElements();
+        });
+        document.getElementById('sidebar-body-wrapper')?.addEventListener('scroll', () => {
             if (tourActive) positionTourElements();
         });
         panelEditor?.addEventListener('scroll', () => {
@@ -5911,7 +5928,7 @@
                     btnModeEditorMobile.className = 'px-2.5 py-1 rounded-md text-xs font-semibold text-slate-300 hover:text-white transition-all';
                 }
                 if (mobileBottomPanelLabel) {
-                    mobileBottomPanelLabel.innerText = 'Simulator Controls';
+                    mobileBottomPanelLabel.innerText = 'Simulator Options';
                 }
                 
                 if (snapModeSection) snapModeSection.classList.add('hidden-visually');
