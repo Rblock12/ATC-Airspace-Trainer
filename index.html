@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
     <title>ATC Airspace Sector Trainer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -181,6 +181,7 @@
         :root {
             --app-top: 0px;
             --app-height: 100dvh;
+            --kb-safe-height: 100dvh;
         }
         html, body {
             position: fixed;
@@ -200,6 +201,45 @@
             width: 100%;
             overflow: hidden;
         }
+
+        /* Virtual Keyboard & Visual Viewport Modal Adaptation */
+        #modal-sector,
+        #modal-rename,
+        #modal-route-alt,
+        #modal-alert,
+        #modal-confirm,
+        #modal-settings,
+        #modal-help,
+        #modal-splash,
+        #modal-blank-map-prompt,
+        #modal-demo-info {
+            top: var(--app-top, 0px) !important;
+            height: var(--app-height, 100dvh) !important;
+            bottom: auto !important;
+            transition: padding-top 0.15s ease, top 0.15s ease, height 0.15s ease;
+        }
+        body.virtual-kb-open #modal-sector,
+        body.virtual-kb-open #modal-rename,
+        body.virtual-kb-open #modal-route-alt,
+        body.virtual-kb-open #modal-alert,
+        body.virtual-kb-open #modal-confirm,
+        body.virtual-kb-open #modal-settings,
+        body.virtual-kb-open #modal-help,
+        body.virtual-kb-open #modal-splash,
+        body.virtual-kb-open #modal-blank-map-prompt,
+        body.virtual-kb-open #modal-demo-info {
+            align-items: flex-start !important;
+            padding-top: max(0.75rem, env(safe-area-inset-top, 0.75rem)) !important;
+            padding-bottom: 0.75rem !important;
+        }
+        body.virtual-kb-open #modal-sector > div,
+        body.virtual-kb-open #modal-rename > div,
+        body.virtual-kb-open #modal-route-alt > div,
+        body.virtual-kb-open #modal-settings > div {
+            max-height: calc(var(--kb-safe-height, var(--app-height, 100dvh)) - 1.5rem) !important;
+            overflow-y: auto !important;
+        }
+
         #main-canvas, #three-container, #three-container canvas {
             touch-action: none;
         }
@@ -1044,10 +1084,10 @@
                 <!-- Tab 1: Editor Workflow -->
                 <div id="content-help-editor" class="space-y-3.5">
                     <div class="bg-slate-900/70 border border-slate-800 p-3.5 rounded-lg">
-                        <h3 class="text-sm font-bold text-emerald-400 mb-1.5">1. Map Background &amp; Saving</h3>
+                        <h3 class="text-sm font-bold text-emerald-400 mb-1.5">1. Map Background &amp; Saving (Settings Menu)</h3>
                         <ul class="list-disc list-inside space-y-1 text-slate-300">
-                            <li><strong>Upload Map:</strong> Load an image or PDF chart when starting a new blank session, or upload a new map image anytime at the top of the <strong>Settings</strong> menu (gear icon).</li>
-                            <li><strong>Save File / Load File:</strong> Export or import your entire setup (map background, sectors, and display settings) as a single JSON configuration file anytime.</li>
+                            <li><strong>Upload / Delete Map:</strong> Load an image or PDF chart when starting a new blank session, or open the <strong>Settings</strong> menu (gear icon) anytime to upload a new map image or delete the currently loaded map.</li>
+                            <li><strong>Save File / Load File:</strong> Located at the top of the <strong>Settings</strong> menu (gear icon), allowing you to export or import your entire setup (map background, sectors, and display settings) as a single JSON configuration file anytime.</li>
                         </ul>
                     </div>
 
@@ -1058,16 +1098,17 @@
                             <li><strong>Snap Mode:</strong> Choose <strong>Corners</strong> (snaps to existing points and line intersections), <strong>Edges</strong> (snaps anywhere along existing borders), or <strong>None</strong>.</li>                            
                             <li><strong>Insert &amp; Adjust Points:</strong> While drawing a shape, hold <strong>Shift</strong> and click-and-drag anywhere along an already-drawn line segment to insert a new corner along that line, or <strong>Shift + Drag</strong> any existing corner to move it.</li>
                             <li><strong>Interactive Conflict Resolution:</strong> If a new airspace volume is drawn in a way where it overlaps existing airspace (both laterally and vertically), the overlapping region is highlighted in red hazard hatching. Modify the shape of the newly drawn volume until the banner turns green, or click <strong>Edit Altitudes / Details</strong> to provide altitude separation between the conflicting volumes.</li>
-                            <li><strong>Priority Order:</strong> When volumes overlap, <strong class="text-rose-400">Military</strong> (when HOT or within an Always Active sub-stratum) overrides <strong class="text-amber-400">Approach</strong>, which overrides <strong class="text-emerald-400">Center</strong>. Airspace volumes of differing types can overlap, and will use this priority order when determinig which airspace a flight is within.</li>                         
+                            <li><strong>Priority Order:</strong> When volumes overlap, <strong class="text-rose-400">Military</strong> (when HOT or within an Always Active sub-stratum) overrides <strong class="text-amber-400">Approach</strong>, which overrides <strong class="text-emerald-400">Center</strong>. Airspace volumes of differing types can overlap, and will use this priority order when determining which airspace a flight is within.</li>                         
                         </ul>
                     </div>
 
                     <div class="bg-slate-900/70 border border-slate-800 p-3.5 rounded-lg">
-                        <h3 class="text-sm font-bold text-emerald-400 mb-1.5">3. Sector List Organization</h3>
+                        <h3 class="text-sm font-bold text-emerald-400 mb-1.5">3. Sector List Organization &amp; Mobile Panel</h3>
                         <ul class="list-disc list-inside space-y-1 text-slate-300">
                             <li><strong>Inspect:</strong> Hover over any sector or sub-stratum in the sidebar to highlight it on the map.</li>
-                            <li><strong>Modify:</strong> Click a volume row to edit its altitudes or assigned sector</li>
+                            <li><strong>Modify:</strong> Click a volume row to edit its altitudes or assigned sector.</li>
                             <li><strong>Organize:</strong> Click the <strong>eye icon</strong> to temporarily hide the volume from the map (this only affects visuals while editing, not simulator airspace detection). Click the <strong>trash icon</strong> to delete the volume, or drag and drop the layers to reorder them in the sidebar.</li>
+                            <li><strong>Collapsible Panels:</strong> Collapse the sidebar on desktop (or use the bottom bar's <strong>expand/collapse chevron</strong> on mobile) whenever you want an unobstructed view of the radar scope.</li>
                         </ul>
                     </div>
                 </div>
@@ -1081,8 +1122,8 @@
                         </p>
                         <ul class="list-disc list-inside space-y-1 text-slate-300">
                             <li><strong>Random Flight:</strong> Automatically generates a flight path and altitude profile inside your active airspace.</li>
-                            <li><strong>Draw Route:</strong> Click a start point and end point on the 2D map, then enter or randomize the start and end altitudes.</li>
-                            <li><strong>Military Airspace Control:</strong> Toggle military areas between <strong>HOT</strong> and <strong>COLD</strong>. <strong>HOT</strong> airspace will be displayed on the map. <strong>COLD</strong> airspace will be hidden on the map, unless the airspace is designated as <strong>Always Active</strong> and the <strong>Display Always Active on Map</strong> option is selected. The program can randomly assign the status of Military Airspace by clicking <strong>Randomize Hot/Cold</strong>,.</li>
+                            <li><strong>Draw Route:</strong> Click (or tap on mobile) a start point and end point on the 2D map, then enter or randomize the start and end altitudes.</li>
+                            <li><strong>Military Airspace Control:</strong> Toggle military areas between <strong>HOT</strong> and <strong>COLD</strong>. <strong>HOT</strong> airspace will be displayed on the map. <strong>COLD</strong> airspace will be hidden on the map, unless the airspace is designated as <strong>Always Active</strong> and the <strong>Display Always Active on Map</strong> option is selected. The program can randomly assign the status of Military Airspace by clicking <strong>Randomize Hot/Cold</strong>.</li>
                         </ul>
                     </div>
 
@@ -1091,6 +1132,7 @@
                         <ul class="list-disc list-inside space-y-1 text-slate-300">
                             <li>Select each sector the aircraft enters in chronological order from start to finish, click <strong>Add</strong> to place the selected sector into the sequence, and click <strong>Submit Assessment</strong> to submit your guess.</li>
                             <li>After submitting, click <strong>Explanation &amp; Flight Replay (2D / 3D)</strong> to reveal the airspace and scrub through the flight timeline in 2D or 3D. Use the <strong>Visible Airspace</strong> toggle (<strong>Sectors on Route</strong> or <strong>All Sectors</strong>) in the replay overlay to switch between viewing only the volumes your flight penetrated or the entire airspace map.</li>
+                            <li><strong>Collapsible Floating Overlays:</strong> On mobile screens, the <strong>Simulation Paused</strong> quiz card and <strong>Explanation &amp; Flight Replay</strong> panel (which opens in a compact collapsed state by default on mobile) can be expanded or collapsed by tapping their headers to maximize radar visibility.</li>
                         </ul>
                     </div>
                 </div>
@@ -1098,9 +1140,10 @@
                 <!-- Tab 3: Controls & Shortcuts -->
                 <div id="content-help-controls" class="space-y-3.5 hidden-visually">
                     <div class="bg-slate-900/70 border border-slate-800 p-3.5 rounded-lg">
-                        <h3 class="text-sm font-bold text-amber-400 mb-1.5">Cross Section View</h3>
+                        <h3 class="text-sm font-bold text-amber-400 mb-1.5">Cross Section View &amp; Floating Cards</h3>
                         <ul class="list-disc list-inside space-y-1 text-slate-300">
                             <li><strong>Cross Section View (Top-Right):</strong> Drag the altitude slider or use the <strong>-1k / +1k</strong> buttons (1,000-ft steps) to inspect a single altitude level. In <strong>2D</strong>, it filters the map to sectors active at that altitude. In <strong>3D</strong>, it slices off volumes above that level and outlines intersected footprints on a horizontal cutting plane.</li>
+                            <li><strong>Collapsible Control Cards:</strong> Click or tap the header of the <strong>Cross Section View</strong> or <strong>3D Airspace Inspector</strong> panel to collapse or expand its sliders at any time.</li>
                         </ul>
                     </div>
                     <div class="bg-slate-900/70 border border-slate-800 p-3.5 rounded-lg">
@@ -1109,24 +1152,24 @@
                             <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Left-Click:</strong> Draw Point</div>
                             <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Delete Key:</strong> Delete Last Point</div>
                             <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Shift + Drag Point:</strong> Move Point</div>
-                            <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Shift + Drag Line :</strong> Insert &amp; Adjust Point</div>
+                            <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Shift + Drag Line:</strong> Insert &amp; Adjust Point</div>
                         </div>
                     </div>
                     <div class="bg-slate-900/70 border border-slate-800 p-3.5 rounded-lg">
-                        <h3 class="text-sm font-bold text-cyan-400 mb-2">2D View</h3>
-                        <div class="grid grid-cols-2 gap-2 text-xs">
-                            <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Scroll Wheel:</strong> Zoom In / Out</div>
-                            <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Middle-Drag / Shift+Drag:</strong> Pan Map</div>
-                            <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Up / Down Arrows (In Cross Section View):</strong> Change Cross Section Altitude</div>
+                        <h3 class="text-sm font-bold text-cyan-400 mb-2">2D View (Mouse &amp; Touch)</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                            <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Scroll Wheel / 2-Finger Pinch:</strong> Zoom In / Out</div>
+                            <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Middle-Drag / Shift+Drag / 1-Finger Drag:</strong> Pan Map</div>
+                            <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80 sm:col-span-2"><strong class="text-white">Up / Down Arrows (In Cross Section View):</strong> Change Cross Section Altitude</div>
                         </div>
                     </div>
 
                     <div class="bg-slate-900/70 border border-slate-800 p-3.5 rounded-lg">
-                        <h3 class="text-sm font-bold text-cyan-400 mb-2">3D View</h3>
-                        <div class="grid grid-cols-2 gap-2 text-xs">
-                            <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Left-Drag:</strong> Rotate Camera</div>
-                            <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Right-Drag / Shift+Drag:</strong> Pan Camera</div>
-                            <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Scroll Wheel:</strong> Zoom Camera</div>
+                        <h3 class="text-sm font-bold text-cyan-400 mb-2">3D View (Mouse &amp; Touch)</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                            <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Left-Drag / 2-Finger Drag &amp; Twist:</strong> Rotate Camera</div>
+                            <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Right-Drag / Shift+Drag / 1-Finger Drag:</strong> Pan Camera</div>
+                            <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Scroll Wheel / 2-Finger Pinch:</strong> Zoom Camera</div>
                             <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Up / Down Arrows (In Cross Section View):</strong> Change Cross Section Altitude</div>
                         </div>
                     </div>
@@ -1525,77 +1568,92 @@
                     quizFloatingHost.appendChild(qContainer);
                     quizFloatingHost.appendChild(qResults);
                 }
+                if (mainSidebar && mainSidebar.classList.contains('hidden-visually')) {
+                    mainSidebar.classList.remove('hidden-visually');
+                    mainSidebar.classList.add('mobile-collapsed');
+                }
+                btnExpandSidebar?.classList.add('hidden-visually');
+                if (iconCollapseMobile && mainSidebar) {
+                    iconCollapseMobile.classList.toggle('rotate-180', mainSidebar.classList.contains('mobile-collapsed'));
+                }
             } else {
                 if (qContainer.parentElement !== quizSidebarHost) {
                     quizSidebarHost.appendChild(qContainer);
                     quizSidebarHost.appendChild(qResults);
                 }
+                quizBodyContent?.classList.remove('hidden-visually');
+                iconQuizChevron?.classList.remove('rotate-180');
+                if (mainSidebar) {
+                    btnExpandSidebar?.classList.toggle('hidden-visually', !mainSidebar.classList.contains('hidden-visually'));
+                }
             }
-            updateBottomDockMetrics();
         }
 
         function setSidebarCollapsed(collapsed) {
+            if (!mainSidebar) return;
             if (isMobileView()) {
-                mainSidebar.classList.remove('hidden-visually');
-                btnExpandSidebar.classList.add('hidden-visually');
                 mainSidebar.classList.toggle('mobile-collapsed', collapsed);
+                mainSidebar.classList.remove('hidden-visually');
+                btnExpandSidebar?.classList.add('hidden-visually');
                 if (iconCollapseMobile) {
                     iconCollapseMobile.classList.toggle('rotate-180', collapsed);
                 }
-                // When expanding the bottom drawer on mobile, compact any open floating quiz/explanation card so both fit
                 if (!collapsed) {
-                    if (quizBodyContent && !quizContainer.classList.contains('hidden-visually')) {
-                        quizBodyContent.classList.add('hidden-visually');
-                        iconQuizChevron?.classList.add('rotate-180');
-                    }
                     if (expDetailsBody && !explanationOverlay.classList.contains('hidden-visually')) {
                         expDetailsBody.classList.add('hidden-visually');
                         iconExpChevron?.classList.add('rotate-180');
                     }
+                    if (quizBodyContent && !quizContainer.classList.contains('hidden-visually')) {
+                        quizBodyContent.classList.add('hidden-visually');
+                        iconQuizChevron?.classList.add('rotate-180');
+                    }
                 }
             } else {
                 mainSidebar.classList.remove('mobile-collapsed');
-                if (collapsed) {
-                    mainSidebar.classList.add('hidden-visually');
-                    btnExpandSidebar.classList.remove('hidden-visually');
-                } else {
-                    mainSidebar.classList.remove('hidden-visually');
-                    btnExpandSidebar.classList.add('hidden-visually');
-                }
+                mainSidebar.classList.toggle('hidden-visually', collapsed);
+                btnExpandSidebar?.classList.toggle('hidden-visually', !collapsed);
             }
-            updateBottomDockMetrics();
             resizeCanvas();
-            requestAnimationFrame(() => resizeCanvas());
+            setTimeout(() => resizeCanvas(), 210);
         }
 
-        function toggleSidebarCollapsed() {
-            if (isMobileView()) {
-                const isCurrentlyCollapsed = mainSidebar.classList.contains('mobile-collapsed');
-                setSidebarCollapsed(!isCurrentlyCollapsed);
-            } else {
-                const isCurrentlyCollapsed = mainSidebar.classList.contains('hidden-visually');
-                setSidebarCollapsed(!isCurrentlyCollapsed);
+        btnCollapseSidebar?.addEventListener('click', () => {
+            setSidebarCollapsed(true);
+        });
+
+        btnExpandSidebar?.addEventListener('click', () => {
+            setSidebarCollapsed(false);
+        });
+
+        mobileBottomBar?.addEventListener('click', () => {
+            if (!isMobileView()) return;
+            const currentlyCollapsed = mainSidebar.classList.contains('mobile-collapsed');
+            setSidebarCollapsed(!currentlyCollapsed);
+        });
+
+        // Sync visible viewport height (handles mobile browser bars, virtual keyboards, and Google Sites iframes)
+        let lastIntersectionRect = null;
+        let baselineViewportHeight = window.innerHeight;
+
+        function isVirtualKeyboardInput(el) {
+            if (!el || el.tagName !== 'INPUT') return false;
+            const type = (el.getAttribute('type') || 'text').toLowerCase();
+            return type === 'text' || type === 'number' || type === 'search' || type === 'tel' || type === 'url' || type === 'email' || type === 'password';
+        }
+
+        function scrollFocusedInputIntoModalView(targetEl) {
+            const activeEl = targetEl || document.activeElement;
+            if (!isVirtualKeyboardInput(activeEl)) return;
+            const scrollContainer = activeEl.closest('.glass-panel, #sidebar-body-wrapper, #quiz-floating-host');
+            if (scrollContainer && scrollContainer.scrollHeight > scrollContainer.clientHeight) {
+                const containerRect = scrollContainer.getBoundingClientRect();
+                const elRect = activeEl.getBoundingClientRect();
+                const offsetTop = (elRect.top - containerRect.top) + scrollContainer.scrollTop;
+                const desiredScroll = Math.max(0, offsetTop - (containerRect.height * 0.35));
+                scrollContainer.scrollTo({ top: desiredScroll, behavior: 'smooth' });
             }
         }
 
-        btnCollapseSidebar?.addEventListener('click', toggleSidebarCollapsed);
-        btnCollapseSidebarMobile?.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleSidebarCollapsed();
-        });
-        mobileBottomBar?.addEventListener('click', toggleSidebarCollapsed);
-        btnExpandSidebar?.addEventListener('click', () => setSidebarCollapsed(false));
-
-        const mainViewportEl = document.getElementById('main-viewport');
-        if (mainViewportEl && 'ResizeObserver' in window) {
-            const viewportRo = new ResizeObserver(() => {
-                resizeCanvas();
-            });
-            viewportRo.observe(mainViewportEl);
-        }
-
-        // Sync visible viewport height (handles mobile browser bars and Google Sites iframes)
-        let lastIntersectionRect = null;
         function syncViewportBounds() {
             let topPx = 0;
             let heightPx = window.innerHeight;
@@ -1609,10 +1667,56 @@
                 heightPx = lastIntersectionRect.height;
             }
 
+            const activeEl = document.activeElement;
+            const inputFocused = isVirtualKeyboardInput(activeEl);
+            if (!inputFocused && heightPx > baselineViewportHeight) {
+                baselineViewportHeight = heightPx;
+            }
+
+            const isCoarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+            const viewportShrunk = heightPx < (baselineViewportHeight * 0.82);
+            const kbOpen = viewportShrunk || (inputFocused && (isCoarsePointer || isMobileView()));
+
+            document.body.classList.toggle('virtual-kb-open', kbOpen);
+
+            // Calculate safe modal height when keyboard is open (even inside cross-origin iframes where visualViewport may not shrink)
+            let kbSafeHeight = heightPx;
+            if (kbOpen && !viewportShrunk) {
+                kbSafeHeight = Math.max(220, Math.round(heightPx * 0.54));
+            }
+
             document.documentElement.style.setProperty('--app-top', `${Math.round(topPx)}px`);
             document.documentElement.style.setProperty('--app-height', `${Math.round(heightPx)}px`);
+            document.documentElement.style.setProperty('--kb-safe-height', `${Math.round(kbSafeHeight)}px`);
             syncResponsiveHosts();
+
+            if (kbOpen && inputFocused) {
+                scrollFocusedInputIntoModalView(activeEl);
+            }
         }
+
+        document.addEventListener('focusin', (e) => {
+            if (isVirtualKeyboardInput(e.target)) {
+                syncViewportBounds();
+                setTimeout(() => {
+                    syncViewportBounds();
+                    scrollFocusedInputIntoModalView(e.target);
+                }, 120);
+                setTimeout(() => {
+                    syncViewportBounds();
+                    scrollFocusedInputIntoModalView(e.target);
+                }, 320);
+            }
+        });
+
+        document.addEventListener('focusout', (e) => {
+            if (isVirtualKeyboardInput(e.target)) {
+                setTimeout(() => {
+                    syncViewportBounds();
+                    resizeCanvas();
+                }, 100);
+            }
+        });
 
         const viewportSentinel = document.getElementById('viewport-sentinel');
         if (viewportSentinel && 'IntersectionObserver' in window) {
@@ -7563,6 +7667,16 @@
             State.renamingGroupContext = null;
         });
 
+        inputRename?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                btnConfirmRename?.click();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                btnCancelRename?.click();
+            }
+        });
+
         btnConfirmRename?.addEventListener('click', () => {
             if (!State.renamingGroupContext) return;
             const { secId, category } = State.renamingGroupContext;
@@ -8435,11 +8549,19 @@
         });
 
         btnConfirmRoute?.addEventListener('click', () => {
-            const startAlt = parseInt(iRouteStartAlt.value);
-            const endAlt = parseInt(iRouteEndAlt.value);
+            let startAlt = parseInt(iRouteStartAlt.value);
+            let endAlt = parseInt(iRouteEndAlt.value);
+
+            if (!isNaN(startAlt) && isNaN(endAlt)) {
+                endAlt = startAlt;
+                iRouteEndAlt.value = startAlt;
+            } else if (isNaN(startAlt) && !isNaN(endAlt)) {
+                startAlt = endAlt;
+                iRouteStartAlt.value = endAlt;
+            }
 
             if (isNaN(startAlt) || isNaN(endAlt)) {
-                customAlert('Please enter valid numerical altitudes.');
+                customAlert('Please enter at least one valid numerical altitude.');
                 return;
             }
 
