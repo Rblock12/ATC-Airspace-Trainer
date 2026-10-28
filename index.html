@@ -1887,12 +1887,80 @@
             }
         }
 
+        let tourResizeTimer = null;
+        let lastTourMobileMode = isMobileView();
+
+        function syncTourStepForViewport() {
+            if (!tourActive) return;
+            const currentMobile = isMobileView();
+            const crossedBreakpoint = currentMobile !== lastTourMobileMode;
+            lastTourMobileMode = currentMobile;
+
+            const step = TOUR_STEPS[currentTourStep];
+            if (!step) return;
+
+            // Ensure sidebar and floating hosts match the current viewport size
+            if (crossedBreakpoint) {
+                if (step.targetId === 'quiz-container') {
+                    if (currentMobile) {
+                        setSidebarCollapsed(true);
+                        quizBodyContent?.classList.remove('hidden-visually');
+                        iconQuizChevron?.classList.remove('rotate-180');
+                    } else {
+                        setSidebarCollapsed(false);
+                        quizBodyContent?.classList.remove('hidden-visually');
+                    }
+                } else if (step.targetId === 'explanation-overlay') {
+                    setSidebarCollapsed(currentMobile);
+                    expDetailsBody?.classList.remove('hidden-visually');
+                    iconExpChevron?.classList.remove('rotate-180');
+                } else if (
+                    step.targetId === 'editor-categories-container' ||
+                    step.targetId === 'snap-mode-section' ||
+                    step.targetId === 'sim-mil-panel' ||
+                    step.targetId === 'sim-scenario-controls'
+                ) {
+                    setSidebarCollapsed(false);
+                } else if (step.targetId === 'panel-3d-controls') {
+                    if (currentMobile) setSidebarCollapsed(true);
+                }
+            }
+
+            if (highlightedTourEl) {
+                highlightedTourEl.scrollIntoView({ behavior: 'instant', block: 'nearest' });
+            }
+        }
+
+        function scheduleTourPositionUpdate() {
+            if (!tourActive) return;
+            syncTourStepForViewport();
+            positionTourElements();
+            requestAnimationFrame(() => {
+                if (!tourActive) return;
+                if (highlightedTourEl) {
+                    highlightedTourEl.scrollIntoView({ behavior: 'instant', block: 'nearest' });
+                }
+                positionTourElements();
+            });
+            if (tourResizeTimer) clearTimeout(tourResizeTimer);
+            tourResizeTimer = setTimeout(() => {
+                if (!tourActive) return;
+                if (highlightedTourEl) {
+                    highlightedTourEl.scrollIntoView({ behavior: 'instant', block: 'nearest' });
+                }
+                positionTourElements();
+            }, 220);
+        }
+
         function positionTourElements() {
             if (!tourActive || !highlightedTourEl) return;
 
             const step = TOUR_STEPS[currentTourStep];
             const dimAlpha = step && step.dimOpacity !== undefined ? step.dimOpacity : 0.65;
             tourSpotlight.style.setProperty('--spotlight-dim', `rgba(2, 6, 23, ${dimAlpha})`);
+
+            const appShellEl = document.getElementById('app-shell');
+            const shellRect = appShellEl ? appShellEl.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight, right: window.innerWidth, bottom: window.innerHeight };
 
             const rawRect = highlightedTourEl.getBoundingClientRect();
             let top = rawRect.top;
@@ -1914,10 +1982,15 @@
             const height = Math.max(24, bottom - top);
             const pad = 6;
 
-            const spotLeft = Math.max(4, left - pad);
-            const spotTop = Math.max(4, top - pad);
-            const spotWidth = Math.min(window.innerWidth - spotLeft - 4, width + pad * 2);
-            const spotHeight = Math.min(window.innerHeight - spotTop - 4, height + pad * 2);
+            const minX = shellRect.left + 4;
+            const minY = shellRect.top + 4;
+            const maxX = shellRect.right - 4;
+            const maxY = shellRect.bottom - 4;
+
+            const spotLeft = Math.max(minX, left - pad);
+            const spotTop = Math.max(minY, top - pad);
+            const spotWidth = Math.max(24, Math.min(maxX - spotLeft, width + pad * 2));
+            const spotHeight = Math.max(24, Math.min(maxY - spotTop, height + pad * 2));
 
             tourSpotlight.style.left = `${spotLeft}px`;
             tourSpotlight.style.top = `${spotTop}px`;
@@ -1931,17 +2004,15 @@
             const cardW = cardRect.width || 384;
             const cardH = cardRect.height || 230;
             const gap = 18;
-            const margin = 16;
-            const vw = window.innerWidth;
-            const vh = window.innerHeight;
+            const margin = 12;
 
-            const spaceRight = vw - (spotLeft + spotWidth) - margin;
-            const spaceLeft = spotLeft - margin;
-            const spaceBottom = vh - (spotTop + spotHeight) - margin;
-            const spaceTop = spotTop - margin;
+            const spaceRight = shellRect.right - (spotLeft + spotWidth) - margin;
+            const spaceLeft = spotLeft - shellRect.left - margin;
+            const spaceBottom = shellRect.bottom - (spotTop + spotHeight) - margin;
+            const spaceTop = spotTop - shellRect.top - margin;
 
-            let cardLeft = margin;
-            let cardTop = margin;
+            let cardLeft = shellRect.left + margin;
+            let cardTop = shellRect.top + margin;
             let placement = 'right';
 
             if (spaceRight >= cardW + gap) {
@@ -1962,13 +2033,13 @@
                 cardLeft = spotLeft + (spotWidth / 2) - (cardW / 2);
             } else {
                 placement = 'floating';
-                cardLeft = vw - cardW - margin;
-                cardTop = vh - cardH - margin;
+                cardLeft = shellRect.right - cardW - margin;
+                cardTop = shellRect.bottom - cardH - margin;
             }
 
-            // Clamp card within viewport bounds
-            cardLeft = Math.max(margin, Math.min(vw - cardW - margin, cardLeft));
-            cardTop = Math.max(margin, Math.min(vh - cardH - margin, cardTop));
+            // Clamp card within visible app shell bounds
+            cardLeft = Math.max(shellRect.left + margin, Math.min(shellRect.right - cardW - margin, cardLeft));
+            cardTop = Math.max(shellRect.top + margin, Math.min(shellRect.bottom - cardH - margin, cardTop));
 
             tourCard.style.left = `${Math.round(cardLeft)}px`;
             tourCard.style.top = `${Math.round(cardTop)}px`;
@@ -2009,11 +2080,21 @@
             }
         }
 
+        const tourResizeObserver = ('ResizeObserver' in window)
+            ? new ResizeObserver(() => {
+                if (tourActive) scheduleTourPositionUpdate();
+            })
+            : null;
+
         function renderTourStep() {
             clearTourHighlight();
+            if (tourResizeObserver) {
+                tourResizeObserver.disconnect();
+            }
             const step = TOUR_STEPS[currentTourStep];
             if (!step) return;
 
+            lastTourMobileMode = isMobileView();
             if (typeof step.onEnter === 'function') {
                 step.onEnter();
             }
@@ -2037,9 +2118,13 @@
                 const el = document.getElementById(step.targetId);
                 if (el) {
                     highlightedTourEl = el;
-                    el.scrollIntoView({ behavior: 'instant', block: 'nearest' });
-                    positionTourElements();
-                    requestAnimationFrame(() => positionTourElements());
+                    if (tourResizeObserver) {
+                        const appShellEl = document.getElementById('app-shell');
+                        if (appShellEl) tourResizeObserver.observe(appShellEl);
+                        if (mainSidebar) tourResizeObserver.observe(mainSidebar);
+                        tourResizeObserver.observe(el);
+                    }
+                    scheduleTourPositionUpdate();
                 }
             }
         }
@@ -2053,12 +2138,14 @@
 
         function endGuidedTour() {
             tourActive = false;
+            if (tourResizeTimer) clearTimeout(tourResizeTimer);
+            if (tourResizeObserver) tourResizeObserver.disconnect();
             clearTourHighlight();
             tourCard.classList.add('hidden-visually');
         }
 
         window.addEventListener('resize', () => {
-            if (tourActive) positionTourElements();
+            if (tourActive) scheduleTourPositionUpdate();
         });
         document.getElementById('sidebar-body-wrapper')?.addEventListener('scroll', () => {
             if (tourActive) positionTourElements();
@@ -2647,6 +2734,9 @@
             if (ThreeApp.initialized) {
                 ThreeApp.onResize();
                 ThreeApp.rebuildScene();
+            }
+            if (tourActive) {
+                scheduleTourPositionUpdate();
             }
         }
         window.addEventListener('resize', () => {
