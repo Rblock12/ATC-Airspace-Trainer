@@ -179,8 +179,7 @@
 
         /* Strict Viewport Lock & Mobile Bottom Dock Layout */
         :root {
-            --app-top: 0px;
-            --app-height: 100dvh;
+            --vv-top: 0px;
             --kb-safe-height: 100dvh;
         }
         html, body {
@@ -194,30 +193,13 @@
         }
         #app-shell {
             position: fixed;
-            left: 0;
-            right: 0;
-            top: var(--app-top, 0px);
-            height: var(--app-height, 100dvh);
+            inset: 0;
             width: 100%;
+            height: 100dvh;
             overflow: hidden;
         }
 
-        /* Virtual Keyboard & Visual Viewport Modal Adaptation */
-        #modal-sector,
-        #modal-rename,
-        #modal-route-alt,
-        #modal-alert,
-        #modal-confirm,
-        #modal-settings,
-        #modal-help,
-        #modal-splash,
-        #modal-blank-map-prompt,
-        #modal-demo-info {
-            top: var(--app-top, 0px) !important;
-            height: var(--app-height, 100dvh) !important;
-            bottom: auto !important;
-            transition: padding-top 0.15s ease, top 0.15s ease, height 0.15s ease;
-        }
+        /* Virtual Keyboard Modal Adaptation */
         body.virtual-kb-open #modal-sector,
         body.virtual-kb-open #modal-rename,
         body.virtual-kb-open #modal-route-alt,
@@ -228,6 +210,9 @@
         body.virtual-kb-open #modal-splash,
         body.virtual-kb-open #modal-blank-map-prompt,
         body.virtual-kb-open #modal-demo-info {
+            top: var(--vv-top, 0px) !important;
+            height: var(--kb-safe-height, 100dvh) !important;
+            bottom: auto !important;
             align-items: flex-start !important;
             padding-top: max(0.75rem, env(safe-area-inset-top, 0.75rem)) !important;
             padding-bottom: 0.75rem !important;
@@ -236,7 +221,7 @@
         body.virtual-kb-open #modal-rename > div,
         body.virtual-kb-open #modal-route-alt > div,
         body.virtual-kb-open #modal-settings > div {
-            max-height: calc(var(--kb-safe-height, var(--app-height, 100dvh)) - 1.5rem) !important;
+            max-height: calc(var(--kb-safe-height, 100dvh) - 1.5rem) !important;
             overflow-y: auto !important;
         }
 
@@ -263,7 +248,7 @@
                 position: relative;
                 width: 100%;
                 height: auto;
-                max-height: calc(var(--app-height, 100dvh) * 0.48);
+                max-height: 48dvh;
                 flex-shrink: 0;
                 border-right: none;
                 border-top: 1px solid rgba(16, 185, 129, 0.35);
@@ -284,9 +269,6 @@
     </style>
 </head>
 <body class="antialiased select-none">
-    <!-- Invisible Viewport Sentinel for Google Sites / Iframe Visible Area Calculation -->
-    <div id="viewport-sentinel" class="fixed inset-0 pointer-events-none z-[-1]"></div>
-
     <div id="app-shell" class="flex flex-col md:flex-row">
 
     <!-- Mobile Top-Anchored Header (with inline Editor / Simulator buttons) -->
@@ -437,11 +419,14 @@
         <div id="panel-sim" class="flex-shrink-0 md:flex-1 md:overflow-y-auto p-4 flex flex-col gap-4 hidden-visually">
             <div id="sim-scenario-controls" class="bg-slate-800/50 p-4 rounded border border-slate-700">
                 <h3 class="text-sm font-semibold text-radar-green mb-2">Scenario Controls</h3>
-                <div class="flex gap-2">
-                    <button id="btn-start-scenario" class="flex-1 py-2 bg-radar-green text-radar-dark font-bold rounded shadow-lg shadow-radar-green/20 hover:scale-[1.02] transition-transform text-xs">
+                <div class="grid grid-cols-3 gap-2">
+                    <button id="btn-point-probe" class="py-2 px-2 bg-amber-500 text-slate-950 font-bold rounded shadow-lg shadow-amber-500/20 hover:scale-[1.02] transition-transform text-xs" title="Spawn a stationary aircraft and identify which sector owns it">
+                        Point Probe
+                    </button>
+                    <button id="btn-start-scenario" class="py-2 px-2 bg-radar-green text-radar-dark font-bold rounded shadow-lg shadow-radar-green/20 hover:scale-[1.02] transition-transform text-xs">
                         Random Flight
                     </button>
-                    <button id="btn-draw-route" class="flex-1 py-2 bg-blue-500 text-white font-bold rounded shadow-lg shadow-blue-500/20 hover:scale-[1.02] transition-transform text-xs">
+                    <button id="btn-draw-route" class="py-2 px-2 bg-blue-500 text-white font-bold rounded shadow-lg shadow-blue-500/20 hover:scale-[1.02] transition-transform text-xs">
                         Draw Route
                     </button>
                 </div>
@@ -480,7 +465,7 @@
                               <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-radar-green opacity-75"></span>
                               <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-radar-green"></span>
                             </span>
-                            <h3 class="font-bold text-xs md:text-sm tracking-wide uppercase">SIMULATION PAUSED</h3>
+                            <h3 id="quiz-header-title" class="font-bold text-xs md:text-sm tracking-wide uppercase">SIMULATION PAUSED</h3>
                         </div>
                         <button type="button" id="btn-toggle-quiz-body" class="md:hidden p-1 text-slate-400 hover:text-white rounded" title="Collapse/Expand Quiz Panel">
                             <svg id="icon-quiz-chevron" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -495,7 +480,7 @@
 
                         <div class="space-y-3">
                             <div>
-                                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Sector Sequence (Current &rarr; End)</label>
+                                <label id="quiz-prompt-label" class="block text-xs font-semibold text-slate-300 mb-1.5">Sector Sequence (Current &rarr; End)</label>
                                 <div id="user-sector-sequence" class="flex flex-wrap gap-1.5 mb-2.5 p-2.5 bg-slate-950/90 rounded border border-slate-700 min-h-[42px] max-h-28 overflow-y-auto items-center">
                                     <span class="text-slate-500 text-xs italic">No sectors added yet...</span>
                                 </div>
@@ -680,6 +665,58 @@
             </div>
         </div>
 
+        <!-- Editor Polygon Drawing Controls Pill (Top Center in Editor Mode) -->
+        <div id="editor-drawing-banner" class="absolute top-14 md:top-4 left-1/2 -translate-x-1/2 z-40 hidden-visually glass-panel px-3 py-2 rounded-full shadow-2xl border border-emerald-500/70 max-w-[95vw] transition-all duration-200">
+            <div class="flex items-center gap-2 sm:gap-2.5">
+                <div class="flex items-center gap-1.5 pl-1.5">
+                    <span class="relative flex h-2 w-2 flex-shrink-0">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span id="editor-drawing-status" class="text-[11px] font-mono font-bold text-emerald-300 whitespace-nowrap">1 pt</span>
+                </div>
+                <div class="h-4 w-px bg-slate-700/80 flex-shrink-0"></div>
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                    <button type="button" id="btn-drawing-undo" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-full text-xs font-semibold border border-slate-700 transition-colors whitespace-nowrap" title="Undo Last Point (Delete)">
+                        Undo Last Point
+                    </button>
+                    <button type="button" id="btn-drawing-close" disabled class="px-3 py-1 bg-emerald-500 text-slate-950 font-bold rounded-full text-xs transition-all shadow opacity-40 cursor-not-allowed whitespace-nowrap" title="Close Shape &amp; Set Altitudes">
+                        Close Shape
+                    </button>
+                    <button type="button" id="btn-drawing-cancel" class="px-2.5 py-1 bg-slate-800 hover:bg-red-950/60 text-slate-300 hover:text-red-300 rounded-full text-xs font-semibold border border-slate-700 hover:border-red-800/60 transition-colors whitespace-nowrap" title="Cancel Shape (Right-Click)">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Multi-Leg Route Drawing Floating Banner (Top Center in Simulator Mode) -->
+        <div id="route-drawing-banner" class="absolute top-14 md:top-4 left-1/2 -translate-x-1/2 z-40 hidden-visually glass-panel px-3.5 py-2.5 rounded-xl shadow-2xl border border-blue-500/70 w-[440px] max-w-[94vw] transition-all duration-200">
+            <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="relative flex h-2.5 w-2.5 flex-shrink-0">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
+                    </span>
+                    <div class="min-w-0">
+                        <div class="text-xs font-bold uppercase tracking-wider text-blue-400 truncate">Draw Multi-Leg Route</div>
+                        <div id="route-drawing-status" class="text-[11px] text-slate-300 truncate">Click or tap map to place start point</div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                    <button type="button" id="btn-route-undo" disabled class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded text-xs font-semibold border border-slate-700 transition-colors opacity-40 cursor-not-allowed" title="Remove last waypoint (Delete / Backspace)">
+                        Undo
+                    </button>
+                    <button type="button" id="btn-route-cancel" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded text-xs font-semibold border border-slate-700 transition-colors" title="Cancel route drawing (Right-click / Esc)">
+                        Cancel
+                    </button>
+                    <button type="button" id="btn-route-finish" disabled class="px-3 py-1 bg-blue-500 text-white font-bold rounded text-xs transition-all shadow opacity-40 cursor-not-allowed" title="Finish route and set altitudes (Double-click / Enter)">
+                        Finish Route
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Mobile Floating Host for Simulator Quiz & Results (Sits directly above the bottom dock inside main-viewport) -->
         <div id="quiz-floating-host" class="md:hidden absolute bottom-2.5 left-1/2 -translate-x-1/2 z-30 w-[460px] max-w-[94vw] max-h-[calc(100%-3.75rem)] overflow-y-auto pointer-events-auto"></div>
 
@@ -717,13 +754,20 @@
                         <span id="exp-current-alt" class="text-white font-bold">SFC</span>
                     </div>
                 </div>
+
+                <div id="exp-handoff-chips" class="hidden-visually flex flex-wrap items-center gap-1.5 mb-3 bg-slate-950/80 px-2.5 py-1.5 rounded border border-slate-800 text-[10px] font-sans"></div>
             </div>
 
-            <div class="flex items-center gap-3">
-                <button id="btn-exp-play-pause" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-bold transition-colors min-w-[72px] text-center shadow">
-                    Pause
-                </button>
-                <input type="range" id="exp-timeline" min="0" max="1000" value="0" style="--slider-color: #3b82f6;" class="custom-slider flex-1">
+            <div id="exp-playback-controls" class="flex flex-col gap-1.5">
+                <div class="flex items-center gap-3">
+                    <button id="btn-exp-play-pause" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-bold transition-colors min-w-[72px] text-center shadow flex-shrink-0">
+                        Pause
+                    </button>
+                    <div class="relative flex-1 flex items-center h-7">
+                        <input type="range" id="exp-timeline" min="0" max="1000" value="0" style="--slider-color: #3b82f6;" class="custom-slider w-full relative z-10">
+                        <div id="exp-timeline-markers" class="absolute inset-0 pointer-events-none z-20"></div>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
@@ -1094,10 +1138,10 @@
                     <div class="bg-slate-900/70 border border-slate-800 p-3.5 rounded-lg">
                         <h3 class="text-sm font-bold text-emerald-400 mb-1.5">2. Drawing, Snapping, Conflict Resolution &amp; Airspace Priority</h3>
                         <ul class="list-disc list-inside space-y-1 text-slate-300">
-                            <li><strong>Draw:</strong> Left-click on the 2D map to start drawing a section of airspace. Click the <strong>red starting dot</strong> to close the shape and set its floor and ceiling altitudes. Press <strong>Delete</strong> to delete the last point, or right-click to cancel.</li>
-                            <li><strong>Snap Mode:</strong> Choose <strong>Corners</strong> (snaps to existing points and line intersections), <strong>Edges</strong> (snaps anywhere along existing borders), or <strong>None</strong>.</li>                            
-                            <li><strong>Insert &amp; Adjust Points:</strong> While drawing a shape, hold <strong>Shift</strong> and click-and-drag anywhere along an already-drawn line segment to insert a new corner along that line, or <strong>Shift + Drag</strong> any existing corner to move it.</li>
-                            <li><strong>Interactive Conflict Resolution:</strong> If a new airspace volume is drawn in a way where it overlaps existing airspace (both laterally and vertically), the overlapping region is highlighted in red hazard hatching. Modify the shape of the newly drawn volume until the banner turns green, or click <strong>Edit Altitudes / Details</strong> to provide altitude separation between the conflicting volumes.</li>
+                            <li><strong>Draw (Mouse &amp; Touch):</strong> Left-click or single-tap on the 2D map to place polygon corners. While drawing, a floating <strong>Drawing Controls</strong> pill appears at the top of the scope so you can tap <strong>Undo Last Point</strong>, <strong>Close Shape</strong> (once 3+ points are placed), or <strong>Cancel</strong>—or click/tap the <strong>red starting dot</strong> to close the volume.</li>
+                            <li><strong>Snap Mode:</strong> Choose <strong>Corners</strong> (snaps to existing points and line intersections), <strong>Edges</strong> (snaps anywhere along existing borders), or <strong>None</strong>. Single-taps on touch devices automatically snap using the active Snap Mode.</li>                            
+                            <li><strong>Insert &amp; Adjust Points:</strong> On desktop, hold <strong>Shift + Drag</strong> on any drawn line segment to insert a new corner, or <strong>Shift + Drag</strong> any corner to move it. On touch devices, tap a corner to select it (or highlight a sector) and <strong>1-finger drag</strong> directly on the vertex to move it while 1-finger dragging on empty space pans the map.</li>
+                            <li><strong>Interactive Conflict Resolution:</strong> If a new airspace volume overlaps existing airspace of the same category (both laterally and vertically), the overlapping region is highlighted in red hazard hatching. Drag any highlighted corner (with mouse or 1-finger touch drag) until the banner turns green, or click <strong>Edit Altitudes / Details</strong> to separate them vertically.</li>
                             <li><strong>Priority Order:</strong> When volumes overlap, <strong class="text-rose-400">Military</strong> (when HOT or within an Always Active sub-stratum) overrides <strong class="text-amber-400">Approach</strong>, which overrides <strong class="text-emerald-400">Center</strong>. Airspace volumes of differing types can overlap, and will use this priority order when determining which airspace a flight is within.</li>                         
                         </ul>
                     </div>
@@ -1116,23 +1160,25 @@
                 <!-- Tab 2: Simulator Workflow -->
                 <div id="content-help-sim" class="space-y-3.5 hidden-visually">
                     <div class="bg-slate-900/70 border border-slate-800 p-3.5 rounded-lg">
-                        <h3 class="text-sm font-bold text-sky-400 mb-1.5">1. Starting a Flight</h3>
+                        <h3 class="text-sm font-bold text-sky-400 mb-1.5">1. Starting a Scenario</h3>
                         <p class="text-slate-300 mb-1.5">
-                            Switch to <strong>Simulator</strong> mode to hide all of the sector boundaries and test your knowledge:
+                            Switch to <strong>Simulator</strong> mode to hide Center and Approach boundaries and test your airspace recall using three scenario modes:
                         </p>
                         <ul class="list-disc list-inside space-y-1 text-slate-300">
-                            <li><strong>Random Flight:</strong> Automatically generates a flight path and altitude profile inside your active airspace.</li>
-                            <li><strong>Draw Route:</strong> Click (or tap on mobile) a start point and end point on the 2D map, then enter or randomize the start and end altitudes.</li>
-                            <li><strong>Military Airspace Control:</strong> Toggle military areas between <strong>HOT</strong> and <strong>COLD</strong>. <strong>HOT</strong> airspace will be displayed on the map. <strong>COLD</strong> airspace will be hidden on the map, unless the airspace is designated as <strong>Always Active</strong> and the <strong>Display Always Active on Map</strong> option is selected. The program can randomly assign the status of Military Airspace by clicking <strong>Randomize Hot/Cold</strong>.</li>
+                            <li><strong>Point Probe:</strong> Spawns a stationary aircraft target at a random location and altitude and asks <em>"Which sector owns this aircraft?"</em> for rapid flashcard-style drills.</li>
+                            <li><strong>Random Flight:</strong> Automatically generates either a straight or <strong>1-turn dogleg</strong> flight path and altitude profile inside your active airspace.</li>
+                            <li><strong>Draw Route (Multi-Leg):</strong> Click or tap on the 2D map to place a start point and as many turn waypoints as you like. Use the floating banner at the top of the scope to <strong>Undo</strong> a waypoint, <strong>Cancel</strong>, or tap <strong>Finish Route</strong> (or double-click / press <strong>Enter</strong>) to set or randomize the start and end altitudes.</li>
+                            <li><strong>Military Airspace Control:</strong> Toggle military areas between <strong>HOT</strong> and <strong>COLD</strong>, or click <strong>Randomize Hot/Cold</strong>. <strong>HOT</strong> airspace is displayed on the map; <strong>COLD</strong> airspace is hidden unless it has an <strong>Always Active</strong> sub-stratum and <strong>Display Always Active on Map</strong> is checked.</li>
                         </ul>
                     </div>
 
                     <div class="bg-slate-900/70 border border-slate-800 p-3.5 rounded-lg">
-                        <h3 class="text-sm font-bold text-sky-400 mb-1.5">2. Assessing the Flight Path &amp; Flight Replay</h3>
+                        <h3 class="text-sm font-bold text-sky-400 mb-1.5">2. Assessing the Flight &amp; Handoff Replay</h3>
                         <ul class="list-disc list-inside space-y-1 text-slate-300">
-                            <li>Select each sector the aircraft enters in chronological order from start to finish, click <strong>Add</strong> to place the selected sector into the sequence, and click <strong>Submit Assessment</strong> to submit your guess.</li>
-                            <li>After submitting, click <strong>Explanation &amp; Flight Replay (2D / 3D)</strong> to reveal the airspace and scrub through the flight timeline in 2D or 3D. Use the <strong>Visible Airspace</strong> toggle (<strong>Sectors on Route</strong> or <strong>All Sectors</strong>) in the replay overlay to switch between viewing only the volumes your flight penetrated or the entire airspace map.</li>
-                            <li><strong>Collapsible Floating Overlays:</strong> On mobile screens, the <strong>Simulation Paused</strong> quiz card and <strong>Explanation &amp; Flight Replay</strong> panel (which opens in a compact collapsed state by default on mobile) can be expanded or collapsed by tapping their headers to maximize radar visibility.</li>
+                            <li><strong>Submit Your Answer:</strong> In <strong>Point Probe</strong> mode, select the single owning sector and click <strong>Submit Assessment</strong>. For route scenarios, select each sector the aircraft enters in chronological order from start to finish, click <strong>Add</strong>, and click <strong>Submit Assessment</strong>.</li>
+                            <li><strong>Explanation &amp; Flight Replay (2D / 3D):</strong> After submitting, open the replay overlay to reveal the airspace and scrub through the flight timeline in 2D or 3D. Use the <strong>Visible Airspace</strong> toggle (<strong>Sectors on Route</strong> vs. <strong>All Sectors</strong>) to isolate only the volumes penetrated by the flight.</li>
+                            <li><strong>Handoff Jump Markers:</strong> During flight replay, click any <strong>amber diamond marker</strong> on the timeline slider—or tap any sector button in the <strong>Handoffs</strong> bar—to jump the aircraft directly to that exact sector boundary crossing.</li>
+                            <li><strong>Collapsible Floating Overlays:</strong> Tap the header of the <strong>Simulation Paused</strong> quiz card or the <strong>Explanation &amp; Flight Replay</strong> overlay anytime to collapse or expand its details for maximum radar visibility.</li>
                         </ul>
                     </div>
                 </div>
@@ -1147,12 +1193,14 @@
                         </ul>
                     </div>
                     <div class="bg-slate-900/70 border border-slate-800 p-3.5 rounded-lg">
-                        <h3 class="text-sm font-bold text-cyan-400 mb-2">Drawing Mode</h3>
-                        <div class="grid grid-cols-2 gap-2 text-xs">
-                            <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Left-Click:</strong> Draw Point</div>
-                            <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Delete Key:</strong> Delete Last Point</div>
-                            <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Shift + Drag Point:</strong> Move Point</div>
-                            <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Shift + Drag Line:</strong> Insert &amp; Adjust Point</div>
+                        <h3 class="text-sm font-bold text-cyan-400 mb-2">Editor &amp; Route Drawing (Mouse &amp; Touch)</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                            <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Left-Click / Single-Tap:</strong> Add Corner or Waypoint</div>
+                            <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Delete Key / Undo Button:</strong> Undo Last Point</div>
+                            <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Red Start Dot / Close Shape Pill:</strong> Close Airspace Polygon</div>
+                            <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Double-Click / Enter / Finish Button:</strong> Finish Drawn Route</div>
+                            <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Shift + Drag / 1-Finger Vertex Drag:</strong> Move Corner</div>
+                            <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80"><strong class="text-white">Shift + Drag Line:</strong> Insert &amp; Adjust Corner</div>
                         </div>
                     </div>
                     <div class="bg-slate-900/70 border border-slate-800 p-3.5 rounded-lg">
@@ -1422,6 +1470,8 @@
             snapMode: 'CORNERS', // 'CORNERS' | 'EDGES' | 'NONE'
             snappedPoint: null,
             draggedVertex: null,
+            selectedVertex: null,
+            lastInputWasTouch: false,
             hoveredDrawingTarget: null,
             draggedDrawingPointIndex: null,
             conflictResolution: null,
@@ -1516,15 +1566,23 @@
         const btnConflictCancel = document.getElementById('btn-conflict-cancel');
         const btnConflictEditDetails = document.getElementById('btn-conflict-edit-details');
         const btnConflictSave = document.getElementById('btn-conflict-save');
+        const editorDrawingBanner = document.getElementById('editor-drawing-banner');
+        const editorDrawingStatus = document.getElementById('editor-drawing-status');
+        const btnDrawingUndo = document.getElementById('btn-drawing-undo');
+        const btnDrawingClose = document.getElementById('btn-drawing-close');
+        const btnDrawingCancel = document.getElementById('btn-drawing-cancel');
         
         // Sim Elements
         const quizContainer = document.getElementById('quiz-container');
+        const quizHeaderTitle = document.getElementById('quiz-header-title');
+        const quizPromptLabel = document.getElementById('quiz-prompt-label');
         const quizResults = document.getElementById('quiz-results');
         const flightInfoDisplay = document.getElementById('flight-info-display');
         const selectQuizSector = document.getElementById('quiz-sector-select');
         const userSectorSequenceDiv = document.getElementById('user-sector-sequence');
         const btnAddSector = document.getElementById('btn-add-sector');
         const btnClearSequence = document.getElementById('btn-clear-sequence');
+        const btnPointProbe = document.getElementById('btn-point-probe');
         const simMilHeader = document.getElementById('sim-mil-header');
         const simMilBody = document.getElementById('sim-mil-body');
         const iconSimMilChevron = document.getElementById('icon-sim-mil-chevron');
@@ -1535,7 +1593,10 @@
         const expCurrentSector = document.getElementById('exp-current-sector');
         const expCurrentAlt = document.getElementById('exp-current-alt');
         const expProgressPct = document.getElementById('exp-progress-pct');
+        const expPlaybackControls = document.getElementById('exp-playback-controls');
         const expTimeline = document.getElementById('exp-timeline');
+        const expTimelineMarkers = document.getElementById('exp-timeline-markers');
+        const expHandoffChips = document.getElementById('exp-handoff-chips');
         const btnExpPlayPause = document.getElementById('btn-exp-play-pause');
         const btnExpAllOn = document.getElementById('btn-exp-all-on');
         const btnExpRouteOnly = document.getElementById('btn-exp-route-only');
@@ -1631,8 +1692,7 @@
             setSidebarCollapsed(!currentlyCollapsed);
         });
 
-        // Sync visible viewport height (handles mobile browser bars, virtual keyboards, and Google Sites iframes)
-        let lastIntersectionRect = null;
+        // Virtual Keyboard & Visual Viewport Detection for Modals
         let baselineViewportHeight = window.innerHeight;
 
         function isVirtualKeyboardInput(el) {
@@ -1655,17 +1715,8 @@
         }
 
         function syncViewportBounds() {
-            let topPx = 0;
-            let heightPx = window.innerHeight;
-
-            if (window.visualViewport) {
-                topPx = window.visualViewport.offsetTop || 0;
-                heightPx = window.visualViewport.height || window.innerHeight;
-            }
-            if (lastIntersectionRect && lastIntersectionRect.height > 100 && lastIntersectionRect.height < heightPx) {
-                topPx = lastIntersectionRect.top;
-                heightPx = lastIntersectionRect.height;
-            }
+            const topPx = window.visualViewport ? (window.visualViewport.offsetTop || 0) : 0;
+            const heightPx = window.visualViewport ? (window.visualViewport.height || window.innerHeight) : window.innerHeight;
 
             const activeEl = document.activeElement;
             const inputFocused = isVirtualKeyboardInput(activeEl);
@@ -1679,14 +1730,12 @@
 
             document.body.classList.toggle('virtual-kb-open', kbOpen);
 
-            // Calculate safe modal height when keyboard is open (even inside cross-origin iframes where visualViewport may not shrink)
             let kbSafeHeight = heightPx;
             if (kbOpen && !viewportShrunk) {
                 kbSafeHeight = Math.max(220, Math.round(heightPx * 0.54));
             }
 
-            document.documentElement.style.setProperty('--app-top', `${Math.round(topPx)}px`);
-            document.documentElement.style.setProperty('--app-height', `${Math.round(heightPx)}px`);
+            document.documentElement.style.setProperty('--vv-top', `${Math.round(topPx)}px`);
             document.documentElement.style.setProperty('--kb-safe-height', `${Math.round(kbSafeHeight)}px`);
             syncResponsiveHosts();
 
@@ -1718,22 +1767,7 @@
             }
         });
 
-        const viewportSentinel = document.getElementById('viewport-sentinel');
-        if (viewportSentinel && 'IntersectionObserver' in window) {
-            const thresholds = Array.from({ length: 21 }, (_, i) => i / 20);
-            const io = new IntersectionObserver((entries) => {
-                for (const entry of entries) {
-                    if (entry.intersectionRect && entry.intersectionRect.height > 0) {
-                        lastIntersectionRect = entry.intersectionRect;
-                        syncViewportBounds();
-                        resizeCanvas();
-                    }
-                }
-            }, { root: null, threshold: thresholds });
-            io.observe(viewportSentinel);
-        }
         window.visualViewport?.addEventListener('resize', () => {
-            lastIntersectionRect = null;
             syncViewportBounds();
             resizeCanvas();
         });
@@ -1767,6 +1801,11 @@
 
         // Draw Route Elements
         const btnDrawRoute = document.getElementById('btn-draw-route');
+        const routeDrawingBanner = document.getElementById('route-drawing-banner');
+        const routeDrawingStatus = document.getElementById('route-drawing-status');
+        const btnRouteUndo = document.getElementById('btn-route-undo');
+        const btnRouteCancel = document.getElementById('btn-route-cancel');
+        const btnRouteFinish = document.getElementById('btn-route-finish');
         const modalRouteAlt = document.getElementById('modal-route-alt');
         const iRouteStartAlt = document.getElementById('route-start-alt');
         const iRouteEndAlt = document.getElementById('route-end-alt');
@@ -1859,7 +1898,7 @@
             },
             {
                 title: '2. Drawing, Snapping & Conflict Resolution',
-                desc: 'Left-click on the 2D scope to start drawing a volume of airspace, press Delete to delete the last point, and click the red starting dot to close the shape. Hold Shift + Drag on any drawn line to insert a corner along that line. Setting the Snap Mode (Corners, Edges, None) allows you to line up adjacent airspace perfectly without any gaps. If a volume overlaps existing airspace, Conflict Resolution Mode will show you the section where multiple sectors own the same airspace and allow you to fix it.',
+                desc: 'Left-click (or single-tap on touchscreens) on the 2D scope to place polygon points. While drawing, a floating Drawing Controls pill appears at the top of the canvas with Undo Last Point, Close Shape, and Cancel buttons. Set the Snap Mode (Corners, Edges, None) to align adjacent borders without gaps, and if a volume overlaps existing airspace, drag any highlighted corner in Conflict Resolution mode to clear the red hazard region.',
                 targetId: 'snap-mode-section',
                 dimOpacity: 0.65,
                 onEnter: () => {
@@ -1907,7 +1946,7 @@
             },
             {
                 title: '6. Starting a Simulator Scenario',
-                desc: 'We just launched a test flight! You can click "Random Flight" to generate an automatic route or "Draw Route" to pick custom start/end points. Watch the aircraft datablock to see its current altitude and climb/descent arrow (↑ or ↓).',
+                desc: 'We just launched a test flight! In Scenario Controls, you can choose "Point Probe" for a rapid stationary single-sector drill, "Random Flight" to generate a straight or 1-turn dogleg flight, or "Draw Route" to plot custom multi-waypoint routes. Watch the aircraft datablock to see its current altitude and climb/descent arrow (↑ or ↓).',
                 targetId: 'sim-scenario-controls',
                 dimOpacity: 0.55,
                 onEnter: () => {
@@ -1956,7 +1995,7 @@
             },
             {
                 title: '8. Explanation & Flight Replay',
-                desc: 'After submitting your answer, click "Explanation & Flight Replay (2D / 3D)" to reveal the airspace and see how exactly the flight passes through each sector! You can pause or scrub the timeline slider, toggle Visible Airspace between "Sectors on Route" and "All Sectors". You can even switch between the 2D and 3D views!',
+                desc: 'After submitting your answer, click "Explanation & Flight Replay (2D / 3D)" to reveal the airspace and see how the flight passes through each sector! You can pause or scrub the timeline slider, click the amber diamond markers or "Handoffs" chips to jump straight to each sector boundary crossing, toggle Visible Airspace between "Sectors on Route" and "All Sectors", and switch between 2D and 3D views.',
                 targetId: 'explanation-overlay',
                 dimOpacity: 0.35,
                 onEnter: () => {
@@ -2844,7 +2883,6 @@
             }
         }
         window.addEventListener('resize', () => {
-            lastIntersectionRect = null;
             resizeCanvas();
         });
 
@@ -3264,6 +3302,7 @@
             State.conflictResolution = null;
             State.editingVolumeContext = null;
             State.drawingPoints = [];
+            State.selectedVertex = null;
             State.hoveredDrawingTarget = null;
             State.draggedDrawingPointIndex = null;
             conflictBanner.classList.add('hidden-visually');
@@ -3469,11 +3508,94 @@
             return null;
         }
 
+        function getFlightWaypoints(flight) {
+            if (flight && Array.isArray(flight.waypoints) && flight.waypoints.length >= 2) {
+                return flight.waypoints;
+            }
+            if (flight && flight.start && flight.end) {
+                return [
+                    { x: flight.start.x, y: flight.start.y },
+                    { x: flight.end.x, y: flight.end.y }
+                ];
+            }
+            return [];
+        }
+
+        function getFlightCumulativeMetrics(flight) {
+            const pts = getFlightWaypoints(flight);
+            if (pts.length < 2) {
+                return { pts, segLengths: [0], totalLen: 0, cumulProg: [0, 1] };
+            }
+            const segLengths = [];
+            let totalLen = 0;
+            for (let i = 0; i < pts.length - 1; i++) {
+                const len = Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y);
+                segLengths.push(len);
+                totalLen += len;
+            }
+            const cumulProg = [0];
+            if (totalLen > 1e-8) {
+                let acc = 0;
+                for (let i = 0; i < segLengths.length; i++) {
+                    acc += segLengths[i];
+                    cumulProg.push(i === segLengths.length - 1 ? 1 : acc / totalLen);
+                }
+            } else {
+                for (let i = 1; i < pts.length; i++) {
+                    cumulProg.push(i / (pts.length - 1));
+                }
+            }
+            return { pts, segLengths, totalLen, cumulProg };
+        }
+
         function getFlightDataAtProgress(flight, progress) {
-            let px = flight.start.x + (flight.end.x - flight.start.x) * progress;
-            let py = flight.start.y + (flight.end.y - flight.start.y) * progress;
-            let palt = flight.start.alt + (flight.end.alt - flight.start.alt) * progress;
-            return { x: px, y: py, alt: Math.round(palt) };
+            const clampedProg = Math.max(0, Math.min(1, progress));
+            const { pts, cumulProg } = getFlightCumulativeMetrics(flight);
+            const palt = flight.start.alt + (flight.end.alt - flight.start.alt) * clampedProg;
+
+            if (pts.length < 2) {
+                return {
+                    x: flight.start ? flight.start.x : 0.5,
+                    y: flight.start ? flight.start.y : 0.5,
+                    alt: Math.round(palt),
+                    legIndex: 0,
+                    legLocalProg: 0,
+                    dirX: 1,
+                    dirY: 0
+                };
+            }
+
+            let legIdx = 0;
+            for (let i = 0; i < cumulProg.length - 1; i++) {
+                if (clampedProg <= cumulProg[i + 1] || i === cumulProg.length - 2) {
+                    legIdx = i;
+                    break;
+                }
+            }
+
+            const t0 = cumulProg[legIdx];
+            const t1 = cumulProg[legIdx + 1];
+            const span = t1 - t0;
+            const localT = span > 1e-8 ? Math.max(0, Math.min(1, (clampedProg - t0) / span)) : 0;
+
+            const pA = pts[legIdx];
+            const pB = pts[legIdx + 1];
+            const px = pA.x + (pB.x - pA.x) * localT;
+            const py = pA.y + (pB.y - pA.y) * localT;
+
+            const dx = pB.x - pA.x;
+            const dy = pB.y - pA.y;
+            const dLen = Math.hypot(dx, dy) || 1;
+
+            return {
+                x: px,
+                y: py,
+                alt: Math.round(palt),
+                legIndex: legIdx,
+                legLocalProg: localT,
+                dirX: dx / dLen,
+                dirY: dy / dLen
+            };
         }
 
         function getFullSectorSequence(flight, startProgress = 0) {
@@ -3495,6 +3617,63 @@
                 }
             }
             return sequence;
+        }
+
+        function getDetailedSectorRouteAnalysis(flight, startProgress = 0) {
+            const segments = [];
+            const transitions = [];
+            if (!flight) return { segments, transitions };
+
+            const step = 0.002;
+            const isClimbing = flight.end.alt > flight.start.alt;
+            let currentSeg = null;
+
+            for (let t = startProgress; t <= 1.0001; t += step) {
+                const clampedT = Math.min(1.0, t);
+                const pt = getFlightDataAtProgress(flight, clampedT);
+                const airspace = getAirspaceAtPoint(pt.x, pt.y, pt.alt, isClimbing);
+                if (!airspace || !airspace.sector) continue;
+
+                const secId = airspace.sector.id;
+                const secName = airspace.sector.name;
+                const activeFloor = (airspace.category === 'MILITARY' && !airspace.sector.isHot && airspace.volume.alwaysActive)
+                    ? airspace.volume.alwaysActive.floor
+                    : airspace.volume.floor;
+                const activeCeil = (airspace.category === 'MILITARY' && !airspace.sector.isHot && airspace.volume.alwaysActive)
+                    ? airspace.volume.alwaysActive.ceiling
+                    : airspace.volume.ceiling;
+
+                if (!currentSeg || currentSeg.sectorId !== secId) {
+                    if (currentSeg) {
+                        transitions.push({
+                            progress: clampedT,
+                            x: pt.x,
+                            y: pt.y,
+                            alt: pt.alt,
+                            fromId: currentSeg.sectorId,
+                            fromName: currentSeg.sectorName,
+                            toId: secId,
+                            toName: secName
+                        });
+                    }
+                    currentSeg = {
+                        sectorId: secId,
+                        sectorName: secName,
+                        startProgress: clampedT,
+                        endProgress: clampedT,
+                        startAlt: pt.alt,
+                        endAlt: pt.alt,
+                        volFloor: activeFloor,
+                        volCeiling: activeCeil
+                    };
+                    segments.push(currentSeg);
+                } else {
+                    currentSeg.endProgress = clampedT;
+                    currentSeg.endAlt = pt.alt;
+                }
+            }
+
+            return { segments, transitions };
         }
 
         // --- 2D Drawing Engine ---
@@ -3649,6 +3828,7 @@
                     ctx.fill();
                 }
             }
+            updateEditorDrawingBannerUI();
 
             if (State.mode === 'SIM') {
                 if (State.simFlight && (State.simState === 'PLAYING' || State.simState === 'PAUSED' || State.simState === 'EXPLANATION')) {
@@ -3656,20 +3836,46 @@
                     drawAirplane(State.simFlight, renderProgress);
                 }
                 
-                if (State.simState === 'DRAWING_ROUTE_END' && State.customRoute && State.customRoute.start) {
+                if (State.simState === 'DRAWING_ROUTE' && State.customRoute && Array.isArray(State.customRoute.points) && State.customRoute.points.length > 0) {
+                    const rPts = State.customRoute.points;
+                    const routeCol = State.settings.routeColor;
+                    const routeW = State.settings.routeWidth;
+
+                    // Draw placed route legs
+                    if (rPts.length >= 2) {
+                        ctx.beginPath();
+                        ctx.moveTo(rPts[0].x * State.worldW, rPts[0].y * State.worldH);
+                        for (let i = 1; i < rPts.length; i++) {
+                            ctx.lineTo(rPts[i].x * State.worldW, rPts[i].y * State.worldH);
+                        }
+                        ctx.strokeStyle = routeCol;
+                        ctx.lineWidth = routeW / State.zoom;
+                        ctx.stroke();
+                    }
+
+                    // Rubber-band line from last waypoint to cursor
+                    const lastPt = rPts[rPts.length - 1];
                     ctx.beginPath();
-                    ctx.moveTo(State.customRoute.start.x * State.worldW, State.customRoute.start.y * State.worldH);
+                    ctx.moveTo(lastPt.x * State.worldW, lastPt.y * State.worldH);
                     ctx.lineTo(State.mouseX, State.mouseY);
                     ctx.setLineDash([6 / State.zoom, 6 / State.zoom]);
-                    ctx.strokeStyle = State.settings.routeColor;
-                    ctx.lineWidth = State.settings.routeWidth / State.zoom;
+                    ctx.strokeStyle = routeCol;
+                    ctx.lineWidth = routeW / State.zoom;
                     ctx.stroke();
                     ctx.setLineDash([]);
                     
-                    ctx.fillStyle = State.settings.routeColor;
-                    ctx.beginPath();
-                    ctx.arc(State.customRoute.start.x * State.worldW, State.customRoute.start.y * State.worldH, 4 / State.zoom, 0, Math.PI * 2);
-                    ctx.fill();
+                    // Draw waypoint markers
+                    rPts.forEach((pt, idx) => {
+                        const wx = pt.x * State.worldW;
+                        const wy = pt.y * State.worldH;
+                        ctx.fillStyle = idx === 0 ? '#10b981' : routeCol;
+                        ctx.beginPath();
+                        ctx.arc(wx, wy, (idx === 0 ? 5 : 4) / State.zoom, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 1.5 / State.zoom;
+                        ctx.stroke();
+                    });
                 }
             }
 
@@ -3727,11 +3933,20 @@
                     ctx.setLineDash([]);
 
                     if (State.mode === 'EDITOR') {
-                        points.forEach(p => {
-                            ctx.fillStyle = isHighlighted ? '#ffffff' : 'rgba(255, 255, 255, 0.65)';
+                        points.forEach((p, ptIdx) => {
+                            const isSelectedExisting = State.selectedVertex &&
+                                State.selectedVertex.type === 'EXISTING' &&
+                                State.selectedVertex.volume === vol &&
+                                State.selectedVertex.pointIndex === ptIdx;
+                            ctx.fillStyle = isSelectedExisting ? '#38bdf8' : (isHighlighted ? '#ffffff' : 'rgba(255, 255, 255, 0.65)');
                             ctx.beginPath();
-                            ctx.arc(p.x * State.worldW, p.y * State.worldH, (isHighlighted ? 4.5 : 3) / State.zoom, 0, Math.PI * 2);
+                            ctx.arc(p.x * State.worldW, p.y * State.worldH, (isSelectedExisting ? 6 : (isHighlighted ? 4.5 : 3)) / State.zoom, 0, Math.PI * 2);
                             ctx.fill();
+                            if (isSelectedExisting) {
+                                ctx.strokeStyle = '#ffffff';
+                                ctx.lineWidth = 1.5 / State.zoom;
+                                ctx.stroke();
+                            }
                         });
                     }
                     ctx.restore();
@@ -3820,11 +4035,20 @@
                     ctx.setLineDash([]);
 
                     if (State.mode === 'EDITOR') {
-                        points.forEach(p => {
-                            ctx.fillStyle = isHighlighted ? '#ffffff' : 'rgba(255, 200, 200, 0.75)';
+                        points.forEach((p, ptIdx) => {
+                            const isSelectedExisting = State.selectedVertex &&
+                                State.selectedVertex.type === 'EXISTING' &&
+                                State.selectedVertex.volume === vol &&
+                                State.selectedVertex.pointIndex === ptIdx;
+                            ctx.fillStyle = isSelectedExisting ? '#38bdf8' : (isHighlighted ? '#ffffff' : 'rgba(255, 200, 200, 0.75)');
                             ctx.beginPath();
-                            ctx.arc(p.x * State.worldW, p.y * State.worldH, (isHighlighted ? 4.5 : 3) / State.zoom, 0, Math.PI * 2);
+                            ctx.arc(p.x * State.worldW, p.y * State.worldH, (isSelectedExisting ? 6 : (isHighlighted ? 4.5 : 3)) / State.zoom, 0, Math.PI * 2);
                             ctx.fill();
+                            if (isSelectedExisting) {
+                                ctx.strokeStyle = '#ffffff';
+                                ctx.lineWidth = 1.5 / State.zoom;
+                                ctx.stroke();
+                            }
                         });
                     }
                     ctx.restore();
@@ -4159,7 +4383,7 @@
                 ctx.stroke();
             } else {
                 // Only draw rubber-band preview line to cursor when not actively dragging or Shift-targeting an existing segment/vertex
-                if (activeDragIdx === null && !(State.isShiftDown && hoveredTarget)) {
+                if (!State.lastInputWasTouch && activeDragIdx === null && !(State.isShiftDown && hoveredTarget)) {
                     let targetX = State.snappedPoint ? State.snappedPoint.px : State.mouseX;
                     let targetY = State.snappedPoint ? State.snappedPoint.py : State.mouseY;
                     ctx.lineTo(targetX, targetY);
@@ -4197,6 +4421,8 @@
             State.drawingPoints.forEach((p, idx) => {
                 const isHoveredVert = hoveredTarget && hoveredTarget.type === 'VERTEX' && hoveredTarget.index === idx;
                 const isDraggedVert = activeDragIdx === idx;
+                const isSelectedVert = State.selectedVertex && State.selectedVertex.type === 'DRAWING' && State.selectedVertex.index === idx;
+                const isActiveVert = isHoveredVert || isDraggedVert || isSelectedVert;
 
                 let isVertexInsideConflict = false;
                 if (hasConflicts) {
@@ -4206,22 +4432,22 @@
                 }
 
                 if (inConflictMode) {
-                    ctx.fillStyle = (isHoveredVert || isDraggedVert)
+                    ctx.fillStyle = isActiveVert
                         ? '#38bdf8'
                         : (isVertexInsideConflict ? '#ef4444' : (hasConflicts ? '#f59e0b' : '#10b981'));
                 } else {
-                    ctx.fillStyle = idx === 0 ? '#ef4444' : ((isHoveredVert || isDraggedVert) ? '#38bdf8' : '#3b82f6');
+                    ctx.fillStyle = idx === 0 ? '#ef4444' : (isActiveVert ? '#38bdf8' : '#3b82f6');
                 }
 
                 const radius = inConflictMode
-                    ? ((isHoveredVert || isDraggedVert) ? 6.5 : 5)
-                    : ((isHoveredVert || isDraggedVert) ? 5.5 : 4);
+                    ? (isActiveVert ? 6.5 : 5)
+                    : (isActiveVert ? 6 : 4.5);
 
                 ctx.beginPath();
                 ctx.arc(p.x * State.worldW, p.y * State.worldH, radius / State.zoom, 0, Math.PI * 2);
                 ctx.fill();
 
-                if (inConflictMode || isHoveredVert || isDraggedVert) {
+                if (inConflictMode || isActiveVert || idx === 0) {
                     ctx.strokeStyle = '#ffffff';
                     ctx.lineWidth = 1.5 / State.zoom;
                     ctx.stroke();
@@ -4232,23 +4458,31 @@
         function drawAirplane(flight, progressOverride) {
             const prog = (progressOverride !== undefined) ? progressOverride : flight.progress;
             const data = getFlightDataAtProgress(flight, prog);
+            const { pts, cumulProg } = getFlightCumulativeMetrics(flight);
             const px = data.x * State.worldW;
             const py = data.y * State.worldH;
             const routeCol = State.settings.routeColor;
             const routeW = State.settings.routeWidth;
             const targetCol = State.settings.targetColor;
             
-            if (State.simState === 'EXPLANATION') {
+            if (!flight.isPointProbe && State.simState === 'EXPLANATION' && pts.length >= 2) {
+                // Traveled multi-leg path (Start -> Current)
                 ctx.beginPath();
-                ctx.moveTo(flight.start.x * State.worldW, flight.start.y * State.worldH);
+                ctx.moveTo(pts[0].x * State.worldW, pts[0].y * State.worldH);
+                for (let i = 1; i <= data.legIndex; i++) {
+                    ctx.lineTo(pts[i].x * State.worldW, pts[i].y * State.worldH);
+                }
                 ctx.lineTo(px, py);
                 ctx.strokeStyle = routeCol;
                 ctx.lineWidth = (routeW + 0.5) / State.zoom;
                 ctx.stroke();
 
+                // Remaining multi-leg path (Current -> End)
                 ctx.beginPath();
                 ctx.moveTo(px, py);
-                ctx.lineTo(flight.end.x * State.worldW, flight.end.y * State.worldH);
+                for (let i = data.legIndex + 1; i < pts.length; i++) {
+                    ctx.lineTo(pts[i].x * State.worldW, pts[i].y * State.worldH);
+                }
                 ctx.setLineDash([6 / State.zoom, 6 / State.zoom]);
                 ctx.strokeStyle = routeCol;
                 ctx.globalAlpha = 0.65;
@@ -4256,10 +4490,41 @@
                 ctx.stroke();
                 ctx.globalAlpha = 1.0;
                 ctx.setLineDash([]);
-            } else if (State.simState === 'PAUSED') {
+
+                // Draw intermediate turn waypoint markers
+                for (let i = 1; i < pts.length - 1; i++) {
+                    ctx.save();
+                    ctx.fillStyle = cumulProg[i] <= prog ? routeCol : 'rgba(15, 23, 42, 0.9)';
+                    ctx.strokeStyle = routeCol;
+                    ctx.lineWidth = 1.5 / State.zoom;
+                    ctx.beginPath();
+                    ctx.arc(pts[i].x * State.worldW, pts[i].y * State.worldH, 3.5 / State.zoom, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // Draw sector boundary handoff markers along the 2D route
+                const { transitions } = getDetailedSectorRouteAnalysis(flight, 0);
+                transitions.forEach(tr => {
+                    const tx = tr.x * State.worldW;
+                    const ty = tr.y * State.worldH;
+                    ctx.save();
+                    ctx.fillStyle = '#facc15';
+                    ctx.strokeStyle = '#020617';
+                    ctx.lineWidth = 1.5 / State.zoom;
+                    ctx.beginPath();
+                    ctx.arc(tx, ty, 4.2 / State.zoom, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.restore();
+                });
+            } else if (!flight.isPointProbe && State.simState === 'PAUSED' && pts.length >= 2) {
                 ctx.beginPath();
                 ctx.moveTo(px, py);
-                ctx.lineTo(flight.end.x * State.worldW, flight.end.y * State.worldH);
+                for (let i = data.legIndex + 1; i < pts.length; i++) {
+                    ctx.lineTo(pts[i].x * State.worldW, pts[i].y * State.worldH);
+                }
                 ctx.setLineDash([6 / State.zoom, 6 / State.zoom]);
                 ctx.strokeStyle = routeCol;
                 ctx.globalAlpha = 0.8;
@@ -4267,9 +4532,22 @@
                 ctx.stroke();
                 ctx.globalAlpha = 1.0;
                 ctx.setLineDash([]);
+
+                // Draw intermediate turn waypoint markers
+                for (let i = data.legIndex + 1; i < pts.length - 1; i++) {
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+                    ctx.strokeStyle = routeCol;
+                    ctx.lineWidth = 1.5 / State.zoom;
+                    ctx.beginPath();
+                    ctx.arc(pts[i].x * State.worldW, pts[i].y * State.worldH, 3.5 / State.zoom, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.restore();
+                }
             }
             
-            if (prog > 0.02 && State.simState === 'PLAYING') {
+            if (!flight.isPointProbe && prog > 0.02 && State.simState === 'PLAYING') {
                 const p1 = getFlightDataAtProgress(flight, prog - 0.01);
                 const p2 = getFlightDataAtProgress(flight, prog - 0.02);
                 ctx.fillStyle = targetCol;
@@ -4286,6 +4564,17 @@
             
             ctx.strokeStyle = targetCol; 
             ctx.fillStyle = targetCol;
+
+            if (flight.isPointProbe) {
+                ctx.save();
+                ctx.strokeStyle = targetCol;
+                ctx.globalAlpha = 0.75;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(0, 0, 9, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
 
             ctx.save();
             ctx.rotate(Math.PI/4);
@@ -5070,23 +5359,41 @@
 
                 const prog = State.simState === 'EXPLANATION' ? State.explanationProgress : flight.progress;
                 const currentData = getFlightDataAtProgress(flight, prog);
+                const { pts, cumulProg } = getFlightCumulativeMetrics(flight);
 
-                const pStart = this.normToWorld(flight.start.x, flight.start.y, flight.start.alt);
+                const waypointWorlds = pts.map((pt, idx) => {
+                    const altAtWp = flight.start.alt + (flight.end.alt - flight.start.alt) * cumulProg[idx];
+                    return this.normToWorld(pt.x, pt.y, altAtWp);
+                });
+
+                const pStart = waypointWorlds[0] || this.normToWorld(flight.start.x, flight.start.y, flight.start.alt);
                 const pCurrent = this.normToWorld(currentData.x, currentData.y, currentData.alt);
-                const pEnd = this.normToWorld(flight.end.x, flight.end.y, flight.end.alt);
+                const pEnd = waypointWorlds[waypointWorlds.length - 1] || this.normToWorld(flight.end.x, flight.end.y, flight.end.alt);
                 const threeRouteCol = new THREE.Color(State.settings.routeColor || '#38bdf8');
                 const threeTargetCol = new THREE.Color(State.settings.targetColor || '#10b981');
 
-                const traveledGeo = new THREE.BufferGeometry().setFromPoints([pStart, pCurrent]);
+                const traveledPts = [pStart];
+                for (let i = 1; i <= currentData.legIndex && i < waypointWorlds.length; i++) {
+                    traveledPts.push(waypointWorlds[i]);
+                }
+                traveledPts.push(pCurrent);
+
+                const traveledGeo = new THREE.BufferGeometry().setFromPoints(traveledPts);
                 const traveledMat = new THREE.LineBasicMaterial({ color: threeRouteCol, linewidth: 3 });
                 this.flightGroup.add(new THREE.Line(traveledGeo, traveledMat));
 
                 if (State.simState === 'PAUSED' || State.simState === 'EXPLANATION') {
-                    const remGeo = new THREE.BufferGeometry().setFromPoints([pCurrent, pEnd]);
-                    const remMat = new THREE.LineDashedMaterial({ color: threeRouteCol, dashSize: 10, gapSize: 8 });
-                    const remLine = new THREE.Line(remGeo, remMat);
-                    remLine.computeLineDistances();
-                    this.flightGroup.add(remLine);
+                    const remPts = [pCurrent];
+                    for (let i = currentData.legIndex + 1; i < waypointWorlds.length; i++) {
+                        remPts.push(waypointWorlds[i]);
+                    }
+                    if (remPts.length >= 2) {
+                        const remGeo = new THREE.BufferGeometry().setFromPoints(remPts);
+                        const remMat = new THREE.LineDashedMaterial({ color: threeRouteCol, dashSize: 10, gapSize: 8 });
+                        const remLine = new THREE.Line(remGeo, remMat);
+                        remLine.computeLineDistances();
+                        this.flightGroup.add(remLine);
+                    }
                 }
 
                 const addDropPillar = (pt, colHex) => {
@@ -5103,6 +5410,9 @@
                 addDropPillar(pStart, 0x64748b);
                 addDropPillar(pCurrent, threeTargetCol);
                 if (State.simState === 'PAUSED' || State.simState === 'EXPLANATION') {
+                    for (let i = 1; i < waypointWorlds.length - 1; i++) {
+                        addDropPillar(waypointWorlds[i], 0x475569);
+                    }
                     addDropPillar(pEnd, 0x64748b);
                 }
 
@@ -5133,7 +5443,13 @@
                 const coneMat = new THREE.MeshPhongMaterial({ color: threeTargetCol, emissive: threeTargetCol.clone().multiplyScalar(0.5) });
                 const jetMesh = new THREE.Mesh(coneGeo, coneMat);
                 jetMesh.position.copy(pCurrent);
-                jetMesh.lookAt(pEnd);
+                const legTargetWorld = waypointWorlds[Math.min(waypointWorlds.length - 1, currentData.legIndex + 1)] || pEnd;
+                if (pCurrent.distanceToSquared(legTargetWorld) > 1e-3) {
+                    jetMesh.lookAt(legTargetWorld);
+                } else {
+                    const fallbackLook = pCurrent.clone().add(new THREE.Vector3(currentData.dirX * 50, 0, currentData.dirY * 50));
+                    jetMesh.lookAt(fallbackLook);
+                }
                 this.flightGroup.add(jetMesh);
 
                 let altStr = formatAlt(currentData.alt);
@@ -5413,6 +5729,7 @@
                 canvas.classList.add('hidden-visually');
                 panel3DControls.classList.remove('hidden-visually');
                 tooltip.classList.add('hidden-visually');
+                updateEditorDrawingBannerUI();
                 if (isMobileView()) {
                     setSidebarCollapsed(true);
                 }
@@ -5426,6 +5743,7 @@
                 canvas.classList.remove('hidden-visually');
                 threeContainer.classList.add('hidden-visually');
                 panel3DControls.classList.add('hidden-visually');
+                updateEditorDrawingBannerUI();
                 draw();
             }
         }
@@ -6135,9 +6453,10 @@
                 disableCrossSectionView();
                 State.drawingPoints = [];
                 State.customRoute = null;
-                if (State.simState === 'DRAWING_ROUTE_START' || State.simState === 'DRAWING_ROUTE_END') {
+                if (State.simState === 'DRAWING_ROUTE') {
                     State.simState = 'IDLE';
                 }
+                routeDrawingBanner?.classList.add('hidden-visually');
                 tooltip.classList.add('hidden-visually');
                 resetSimulatorUI();
             }
@@ -6303,9 +6622,12 @@
                 }
                 if (State.hoveredDrawingTarget && State.hoveredDrawingTarget.type === 'VERTEX') {
                     State.drawingPoints.splice(State.hoveredDrawingTarget.index, 1);
+                } else if (State.selectedVertex && State.selectedVertex.type === 'DRAWING' && State.selectedVertex.index < State.drawingPoints.length) {
+                    State.drawingPoints.splice(State.selectedVertex.index, 1);
                 } else {
                     State.drawingPoints.pop();
                 }
+                State.selectedVertex = null;
                 State.draggedDrawingPointIndex = null;
                 updateEditorSnapping();
                 State.hoveredDrawingTarget = getHoveredDrawingTarget(State.isShiftDown);
@@ -6316,6 +6638,9 @@
             }
 
             State.drawingPoints.pop();
+            State.selectedVertex = State.drawingPoints.length > 0
+                ? { type: 'DRAWING', index: State.drawingPoints.length - 1 }
+                : null;
             State.draggedDrawingPointIndex = null;
             updateEditorSnapping();
             State.hoveredDrawingTarget = getHoveredDrawingTarget(State.isShiftDown);
@@ -6323,11 +6648,74 @@
             if (State.drawingPoints.length === 0) {
                 canvas.style.cursor = 'crosshair';
                 tooltip.classList.add('hidden-visually');
-            } else {
+            } else if (!State.lastInputWasTouch) {
                 tooltip.innerText = getActiveDrawingTooltipText();
             }
+            updateEditorDrawingBannerUI();
             draw();
         }
+
+        function updateEditorDrawingBannerUI() {
+            if (!editorDrawingBanner) return;
+            const isModalOpen = modalSector && !modalSector.classList.contains('hidden-visually');
+            const shouldShow = State.mode === 'EDITOR' &&
+                State.viewDimension === '2D' &&
+                !State.conflictResolution &&
+                !isModalOpen &&
+                State.drawingPoints.length > 0;
+
+            if (!shouldShow) {
+                editorDrawingBanner.classList.add('hidden-visually');
+                return;
+            }
+
+            editorDrawingBanner.classList.remove('hidden-visually');
+            const count = State.drawingPoints.length;
+            if (editorDrawingStatus) {
+                editorDrawingStatus.innerText = `${count} pt${count === 1 ? '' : 's'}`;
+            }
+            if (btnDrawingClose) {
+                const canClose = count >= 3;
+                btnDrawingClose.disabled = !canClose;
+                btnDrawingClose.classList.toggle('opacity-40', !canClose);
+                btnDrawingClose.classList.toggle('cursor-not-allowed', !canClose);
+                btnDrawingClose.classList.toggle('hover:bg-emerald-400', canClose);
+            }
+        }
+
+        function cancelActivePolygonDrawing() {
+            if (State.conflictResolution) return;
+            State.drawingPoints = [];
+            State.selectedVertex = null;
+            State.hoveredDrawingTarget = null;
+            State.draggedDrawingPointIndex = null;
+            State.snappedPoint = null;
+            tooltip.classList.add('hidden-visually');
+            updateEditorDrawingBannerUI();
+            draw();
+        }
+
+        function closeActivePolygonDrawing() {
+            if (State.mode !== 'EDITOR' || State.drawingPoints.length < 3) return;
+            tooltip.classList.add('hidden-visually');
+            showSectorModal();
+            updateEditorDrawingBannerUI();
+        }
+
+        btnDrawingUndo?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteLastDrawingPoint();
+        });
+
+        btnDrawingClose?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeActivePolygonDrawing();
+        });
+
+        btnDrawingCancel?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            cancelActivePolygonDrawing();
+        });
 
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Shift' && !State.isShiftDown) {
@@ -6368,6 +6756,24 @@
                 e.preventDefault();
                 commitConflictResolutionSave();
                 return;
+            }
+
+            if (State.mode === 'SIM' && State.simState === 'DRAWING_ROUTE') {
+                if (e.key === 'Enter' && State.customRoute && State.customRoute.points.length >= 2) {
+                    e.preventDefault();
+                    finishCustomRouteDrawing();
+                    return;
+                }
+                if (e.key === 'Delete' || e.key === 'Backspace') {
+                    e.preventDefault();
+                    undoLastRoutePoint();
+                    return;
+                }
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cancelCustomRouteDrawing();
+                    return;
+                }
             }
 
             if (State.sliceEnabled && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
@@ -6537,6 +6943,7 @@
         }, { passive: false });
 
         canvas.addEventListener('mousemove', (e) => {
+            State.lastInputWasTouch = false;
             if (State.isDragging) {
                 const dx = (e.clientX - State.dragStartX) / State.scale;
                 const dy = (e.clientY - State.dragStartY) / State.scale;
@@ -6625,14 +7032,16 @@
                     tooltip.classList.add('hidden-visually');
                 }
             } else if (State.mode === 'SIM') {
-                if (State.simState === 'DRAWING_ROUTE_START') {
+                if (State.simState === 'DRAWING_ROUTE') {
+                    const count = State.customRoute && Array.isArray(State.customRoute.points) ? State.customRoute.points.length : 0;
                     tooltip.classList.remove('hidden-visually');
-                    tooltip.innerText = 'Route Drawing\nLeft Click: Set Start Point\nRight Click: Cancel';
-                    positionTooltip(e);
-                    canvas.style.cursor = 'crosshair';
-                } else if (State.simState === 'DRAWING_ROUTE_END') {
-                    tooltip.classList.remove('hidden-visually');
-                    tooltip.innerText = 'Route Drawing\nLeft Click: Set End Point\nRight Click: Cancel';
+                    if (count === 0) {
+                        tooltip.innerText = 'Multi-Leg Route Drawing\nLeft Click: Set Start Point\nRight Click: Cancel';
+                    } else if (count === 1) {
+                        tooltip.innerText = 'Multi-Leg Route Drawing\nLeft Click: Add Next Waypoint\nDelete: Undo Point • Right Click: Cancel';
+                    } else {
+                        tooltip.innerText = `Multi-Leg Route (${count} pts)\nLeft Click: Add Turn Waypoint\nDouble-Click / Enter: Finish Route`;
+                    }
                     positionTooltip(e);
                     canvas.style.cursor = 'crosshair';
                     draw();
@@ -6666,16 +7075,8 @@
                     canvas.style.cursor = 'grabbing';
                     return;
                 }
-                if (State.simState === 'DRAWING_ROUTE_START') {
-                    State.customRoute = { start: {x, y} };
-                    State.simState = 'DRAWING_ROUTE_END';
-                    draw();
-                    return;
-                } else if (State.simState === 'DRAWING_ROUTE_END') {
-                    State.customRoute.end = {x, y};
-                    State.simState = 'IDLE';
-                    tooltip.classList.add('hidden-visually');
-                    showRouteAltModal();
+                if (State.simState === 'DRAWING_ROUTE') {
+                    addCustomRouteWaypoint(x, y);
                     return;
                 }
                 return;
@@ -6828,32 +7229,95 @@
                 if (State.conflictResolution) {
                     return;
                 }
-                State.drawingPoints = [];
-                State.hoveredDrawingTarget = null;
-                State.draggedDrawingPointIndex = null;
-                tooltip.classList.add('hidden-visually');
-                draw();
-            } else if (State.mode === 'SIM' && (State.simState === 'DRAWING_ROUTE_START' || State.simState === 'DRAWING_ROUTE_END')) {
-                State.simState = 'IDLE';
-                State.customRoute = null;
-                tooltip.classList.add('hidden-visually');
-                draw();
+                cancelActivePolygonDrawing();
+            } else if (State.mode === 'SIM' && State.simState === 'DRAWING_ROUTE') {
+                cancelCustomRouteDrawing();
+            }
+        });
+
+        canvas.addEventListener('dblclick', (e) => {
+            if (State.mode === 'SIM' && State.simState === 'DRAWING_ROUTE') {
+                if (State.customRoute && Array.isArray(State.customRoute.points) && State.customRoute.points.length >= 2) {
+                    e.preventDefault();
+                    finishCustomRouteDrawing();
+                }
             }
         });
 
         // 2D Radar Touch Gestures:
-        // - 1-Finger Drag: Pans the radar map (State.panX, State.panY)
+        // - 1-Finger Drag on Empty Space: Pans the radar map (State.panX, State.panY)
+        // - 1-Finger Drag on Highlighted / Selected Vertex: Moves the vertex with snapping
         // - 2-Finger Pinch-Zoom: Zooms (State.zoom) centered right between the two fingers
-        // - Single Tap in Draw Route mode: Sets route Start and End points
+        // - Single Tap in Editor Mode: Places polygon point (with corner/edge snapping), closes shape on start point, or selects vertex
+        // - Single Tap in Draw Route Mode: Places route waypoints
         let radarTouch1Last = null;
         let radarTouch1Start = null;
         let radarTouchMoved = false;
         let radarPinchLastDist = null;
         let radarPinchLastMid = null;
+        let radarTouchPendingDrawingIdx = null;
+        let radarTouchPendingExistingVert = null;
+
+        function findTouchDrawingVertexIndex(px, py, radiusWorld) {
+            let bestIdx = null;
+            let bestDist = radiusWorld;
+            for (let i = 0; i < State.drawingPoints.length; i++) {
+                const pt = State.drawingPoints[i];
+                const vx = pt.x * State.worldW;
+                const vy = pt.y * State.worldH;
+                const d = Math.hypot(px - vx, py - vy);
+                if (d < bestDist) {
+                    bestDist = d;
+                    bestIdx = i;
+                }
+            }
+            return bestIdx;
+        }
+
+        function findTouchExistingVertex(px, py, radiusWorld, onlyHighlightedOrSelected = false) {
+            const isolateSlice = isSliceActiveInCurrentView();
+            const allGroups = [
+                ...State.sectors.map(s => ({ sec: s, cat: 'CENTER' })),
+                ...State.appSectors.map(s => ({ sec: s, cat: 'APPROACH' })),
+                ...State.milSectors.map(s => ({ sec: s, cat: 'MILITARY' }))
+            ];
+            let bestMatch = null;
+            let bestDist = radiusWorld;
+
+            for (const { sec, cat } of allGroups) {
+                for (const vol of sec.volumes) {
+                    if (!isVolumeVisible(sec, vol)) continue;
+                    if (isolateSlice && !doesVolumeIntersectSlice(sec, vol, cat, State.sliceAlt)) continue;
+
+                    const isHighlightedVol = (State.hoveredVolumeId === vol.id) || (State.hoveredSectorId === sec.id);
+                    for (let i = 0; i < vol.path.length; i++) {
+                        const isSelectedVert = State.selectedVertex &&
+                            State.selectedVertex.type === 'EXISTING' &&
+                            State.selectedVertex.volume === vol &&
+                            State.selectedVertex.pointIndex === i;
+
+                        if (onlyHighlightedOrSelected && !isHighlightedVol && !isSelectedVert) continue;
+
+                        const pt = vol.path[i];
+                        const vx = pt.x * State.worldW;
+                        const vy = pt.y * State.worldH;
+                        const d = Math.hypot(px - vx, py - vy);
+                        if (d < bestDist) {
+                            bestDist = d;
+                            bestMatch = { sector: sec, volume: vol, pointIndex: i };
+                        }
+                    }
+                }
+            }
+            return bestMatch;
+        }
 
         canvas.addEventListener('touchstart', (e) => {
             if (State.viewDimension !== '2D') return;
             e.preventDefault();
+            State.lastInputWasTouch = true;
+            tooltip.classList.add('hidden-visually');
+
             if (e.touches.length === 1) {
                 const t = e.touches[0];
                 radarTouch1Last = { x: t.clientX, y: t.clientY };
@@ -6861,9 +7325,42 @@
                 radarTouchMoved = false;
                 radarPinchLastDist = null;
                 radarPinchLastMid = null;
+                radarTouchPendingDrawingIdx = null;
+                radarTouchPendingExistingVert = null;
+
+                if (State.mode === 'EDITOR') {
+                    const pos = getMousePos({ clientX: t.clientX, clientY: t.clientY });
+                    State.mouseX = pos.px;
+                    State.mouseY = pos.py;
+                    const touchHitRadius = 22 / (State.scale * State.zoom);
+
+                    if (State.conflictResolution) {
+                        const hitIdx = findTouchDrawingVertexIndex(pos.px, pos.py, touchHitRadius);
+                        if (hitIdx !== null) {
+                            State.draggedDrawingPointIndex = hitIdx;
+                            State.selectedVertex = { type: 'DRAWING', index: hitIdx };
+                            draw();
+                        }
+                    } else if (State.drawingPoints.length > 0) {
+                        const hitIdx = findTouchDrawingVertexIndex(pos.px, pos.py, touchHitRadius);
+                        if (hitIdx !== null) {
+                            radarTouchPendingDrawingIdx = hitIdx;
+                        }
+                    } else {
+                        // Check if touching a selected or highlighted existing vertex first
+                        const hitExisting = findTouchExistingVertex(pos.px, pos.py, touchHitRadius, true);
+                        if (hitExisting) {
+                            radarTouchPendingExistingVert = hitExisting;
+                        }
+                    }
+                }
             } else if (e.touches.length === 2) {
                 radarTouch1Last = null;
                 radarTouchMoved = true;
+                radarTouchPendingDrawingIdx = null;
+                radarTouchPendingExistingVert = null;
+                State.draggedDrawingPointIndex = null;
+                State.draggedVertex = null;
                 const t0 = e.touches[0];
                 const t1 = e.touches[1];
                 radarPinchLastDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
@@ -6874,13 +7371,63 @@
         canvas.addEventListener('touchmove', (e) => {
             if (State.viewDimension !== '2D') return;
             e.preventDefault();
+            State.lastInputWasTouch = true;
+
             if (e.touches.length === 1 && radarTouch1Last) {
                 const t = e.touches[0];
                 const dx = t.clientX - radarTouch1Last.x;
                 const dy = t.clientY - radarTouch1Last.y;
                 if (radarTouch1Start && Math.hypot(t.clientX - radarTouch1Start.x, t.clientY - radarTouch1Start.y) > 8) {
                     radarTouchMoved = true;
+                    // Promote pending vertex touch into an active 1-finger vertex drag
+                    if (State.mode === 'EDITOR') {
+                        if (radarTouchPendingDrawingIdx !== null && State.draggedDrawingPointIndex === null) {
+                            State.draggedDrawingPointIndex = radarTouchPendingDrawingIdx;
+                            State.selectedVertex = { type: 'DRAWING', index: radarTouchPendingDrawingIdx };
+                        } else if (radarTouchPendingExistingVert && !State.draggedVertex) {
+                            State.draggedVertex = radarTouchPendingExistingVert;
+                            State.selectedVertex = {
+                                type: 'EXISTING',
+                                sector: radarTouchPendingExistingVert.sector,
+                                volume: radarTouchPendingExistingVert.volume,
+                                pointIndex: radarTouchPendingExistingVert.pointIndex
+                            };
+                        }
+                    }
                 }
+
+                // If actively dragging a drawing vertex or existing sector vertex with 1 finger
+                if (State.mode === 'EDITOR' && State.draggedDrawingPointIndex !== null) {
+                    const pos = getMousePos({ clientX: t.clientX, clientY: t.clientY });
+                    State.mouseX = pos.px;
+                    State.mouseY = pos.py;
+                    updateEditorSnapping();
+                    const targetX = State.snappedPoint ? State.snappedPoint.x : State.mouseX / State.worldW;
+                    const targetY = State.snappedPoint ? State.snappedPoint.y : State.mouseY / State.worldH;
+                    State.drawingPoints[State.draggedDrawingPointIndex] = { x: targetX, y: targetY };
+                    if (State.conflictResolution) {
+                        updateConflictResolutionState();
+                    }
+                    radarTouch1Last = { x: t.clientX, y: t.clientY };
+                    draw();
+                    return;
+                }
+
+                if (State.mode === 'EDITOR' && State.draggedVertex) {
+                    const pos = getMousePos({ clientX: t.clientX, clientY: t.clientY });
+                    State.mouseX = pos.px;
+                    State.mouseY = pos.py;
+                    updateEditorSnapping();
+                    const targetX = State.snappedPoint ? State.snappedPoint.x : State.mouseX / State.worldW;
+                    const targetY = State.snappedPoint ? State.snappedPoint.y : State.mouseY / State.worldH;
+                    State.draggedVertex.volume.path[State.draggedVertex.pointIndex] = { x: targetX, y: targetY };
+                    delete State.draggedVertex.volume._anchorCache;
+                    radarTouch1Last = { x: t.clientX, y: t.clientY };
+                    draw();
+                    return;
+                }
+
+                // Otherwise 1-finger drag on empty space pans the map
                 State.panX += dx / (State.scale || 1);
                 State.panY += dy / (State.scale || 1);
                 radarTouch1Last = { x: t.clientX, y: t.clientY };
@@ -6919,37 +7466,87 @@
             }
         }, { passive: false });
 
-        canvas.addEventListener('touchend', (e) => {
+        const handleRadarTouchEnd = (e) => {
             if (State.viewDimension !== '2D') return;
-            if (!radarTouchMoved && radarTouch1Start && e.changedTouches.length === 1) {
+            State.lastInputWasTouch = true;
+
+            if (State.draggedDrawingPointIndex !== null) {
+                State.draggedDrawingPointIndex = null;
+                State.snappedPoint = null;
+                draw();
+            }
+            if (State.draggedVertex) {
+                State.draggedVertex = null;
+                State.snappedPoint = null;
+                saveSectors();
+                draw();
+            }
+
+            if (!radarTouchMoved && radarTouch1Start && e.changedTouches && e.changedTouches.length === 1) {
                 const t = e.changedTouches[0];
                 const pos = getMousePos({ clientX: t.clientX, clientY: t.clientY });
-                const x = pos.px / State.worldW;
-                const y = pos.py / State.worldH;
+                State.mouseX = pos.px;
+                State.mouseY = pos.py;
+                let x = pos.px / State.worldW;
+                let y = pos.py / State.worldH;
 
-                if (State.mode === 'SIM') {
-                    if (State.simState === 'DRAWING_ROUTE_START') {
-                        State.customRoute = { start: { x, y } };
-                        State.simState = 'DRAWING_ROUTE_END';
+                if (State.mode === 'SIM' && State.simState === 'DRAWING_ROUTE') {
+                    addCustomRouteWaypoint(x, y);
+                } else if (State.mode === 'EDITOR') {
+                    const touchHitRadius = 22 / (State.scale * State.zoom);
+
+                    if (State.conflictResolution) {
+                        const hitIdx = findTouchDrawingVertexIndex(pos.px, pos.py, touchHitRadius);
+                        State.selectedVertex = hitIdx !== null ? { type: 'DRAWING', index: hitIdx } : null;
                         draw();
-                    } else if (State.simState === 'DRAWING_ROUTE_END') {
-                        State.customRoute.end = { x, y };
-                        State.simState = 'IDLE';
-                        tooltip.classList.add('hidden-visually');
-                        showRouteAltModal();
+                    } else {
+                        updateEditorSnapping();
+
+                        // 1. Check if tapping the starting red dot (point 0) to close the polygon
+                        const hitDrawingIdx = findTouchDrawingVertexIndex(pos.px, pos.py, touchHitRadius);
+                        if ((State.snappedPoint && State.snappedPoint.type === 'CLOSE') ||
+                            (hitDrawingIdx === 0 && State.drawingPoints.length >= 3)) {
+                            State.snappedPoint = null;
+                            closeActivePolygonDrawing();
+                        } else if (hitDrawingIdx !== null && State.drawingPoints.length > 0) {
+                            // 2. Tapping an already-placed vertex in the active polygon selects it for 1-finger dragging
+                            State.selectedVertex = { type: 'DRAWING', index: hitDrawingIdx };
+                            State.snappedPoint = null;
+                            draw();
+                        } else {
+                            // 3. Single-tap point placement with automatic corner/edge snapping
+                            if (State.snappedPoint) {
+                                x = State.snappedPoint.x;
+                                y = State.snappedPoint.y;
+                            }
+                            State.drawingPoints.push({ x, y });
+                            State.selectedVertex = { type: 'DRAWING', index: State.drawingPoints.length - 1 };
+
+                            // Also check if user tapped directly on a highlighted sector's vertex to allow selecting it
+                            State.snappedPoint = null;
+                            updateEditorDrawingBannerUI();
+                            draw();
+                        }
                     }
                 }
             }
-            if (e.touches.length === 1) {
+
+            radarTouchPendingDrawingIdx = null;
+            radarTouchPendingExistingVert = null;
+
+            if (e.touches && e.touches.length === 1) {
                 radarTouch1Last = { x: e.touches[0].clientX, y: e.touches[0].clientY };
                 radarPinchLastDist = null;
                 radarPinchLastMid = null;
-            } else if (e.touches.length === 0) {
+            } else if (!e.touches || e.touches.length === 0) {
                 radarTouch1Last = null;
                 radarPinchLastDist = null;
                 radarPinchLastMid = null;
             }
-        });
+        };
+
+        canvas.addEventListener('touchend', handleRadarTouchEnd);
+        canvas.addEventListener('touchcancel', handleRadarTouchEnd);
 
         // --- Editor UI Lists ---
         const CATEGORY_META = {
@@ -8334,6 +8931,58 @@
 
             const validLevels = getValidThousandFootLevels(activeVolumes);
             let selectedFlight = null;
+            const preferDogleg = Math.random() < 0.45;
+
+            const tryBuildDoglegCandidate = (pStart, pEnd, startAlt, endAlt) => {
+                const dx = pEnd.x - pStart.x;
+                const dy = pEnd.y - pStart.y;
+                const directDist = Math.hypot(dx, dy);
+                if (directDist < 0.16) return null;
+
+                const midX = (pStart.x + pEnd.x) / 2;
+                const midY = (pStart.y + pEnd.y) / 2;
+                const perpX = -dy / directDist;
+                const perpY = dx / directDist;
+
+                for (let k = 0; k < 8; k++) {
+                    let pTurn = null;
+                    if (k < 4) {
+                        const sign = Math.random() < 0.5 ? 1 : -1;
+                        const alongOffset = (Math.random() - 0.5) * 0.22 * directDist;
+                        const crossOffset = sign * (0.18 + Math.random() * 0.24) * directDist;
+                        pTurn = {
+                            x: midX + (dx / directDist) * alongOffset + perpX * crossOffset,
+                            y: midY + (dy / directDist) * alongOffset + perpY * crossOffset
+                        };
+                    } else {
+                        const randVol = activeVolumes[Math.floor(Math.random() * activeVolumes.length)];
+                        pTurn = getRandomPointInPolygon(randVol.path);
+                    }
+
+                    const d1 = Math.hypot(pTurn.x - pStart.x, pTurn.y - pStart.y);
+                    const d2 = Math.hypot(pEnd.x - pTurn.x, pEnd.y - pTurn.y);
+                    if (d1 < 0.08 || d2 < 0.08) continue;
+
+                    // Ensure a realistic aviation turn deflection (~20° to ~80°) rather than a sharp hairpin
+                    const v1x = (pTurn.x - pStart.x) / d1;
+                    const v1y = (pTurn.y - pStart.y) / d1;
+                    const v2x = (pEnd.x - pTurn.x) / d2;
+                    const v2y = (pEnd.y - pTurn.y) / d2;
+                    const dot = v1x * v2x + v1y * v2y;
+                    if (dot < 0.15 || dot > 0.94) continue;
+
+                    return {
+                        waypoints: [
+                            { x: pStart.x, y: pStart.y },
+                            { x: pTurn.x, y: pTurn.y },
+                            { x: pEnd.x, y: pEnd.y }
+                        ],
+                        start: { x: pStart.x, y: pStart.y, alt: startAlt },
+                        end: { x: pEnd.x, y: pEnd.y, alt: endAlt }
+                    };
+                }
+                return null;
+            };
 
             for (let altAttempt = 0; altAttempt < 35 && !selectedFlight; altAttempt++) {
                 const startAlt = validLevels[Math.floor(Math.random() * validLevels.length)];
@@ -8358,10 +9007,20 @@
                     const minRequiredDist = ptAttempt < 40 ? 0.12 : 0.05;
                     if (dist < minRequiredDist) continue;
 
-                    const candidate = {
-                        start: { x: pStart.x, y: pStart.y, alt: startAlt },
-                        end: { x: pEnd.x, y: pEnd.y, alt: endAlt }
-                    };
+                    let candidate = null;
+                    if (preferDogleg && ptAttempt < 38) {
+                        candidate = tryBuildDoglegCandidate(pStart, pEnd, startAlt, endAlt);
+                    }
+                    if (!candidate) {
+                        candidate = {
+                            waypoints: [
+                                { x: pStart.x, y: pStart.y },
+                                { x: pEnd.x, y: pEnd.y }
+                            ],
+                            start: { x: pStart.x, y: pStart.y, alt: startAlt },
+                            end: { x: pEnd.x, y: pEnd.y, alt: endAlt }
+                        };
+                    }
 
                     if (ptAttempt < 30) {
                         if (isFlightPathFullyControlled(candidate, activeVolumes)) {
@@ -8396,12 +9055,18 @@
                 const p2 = getPolygonCentroid(fallbackVol.path);
                 const safeAlt = validLevels[Math.floor(Math.random() * validLevels.length)];
                 selectedFlight = {
+                    waypoints: [
+                        { x: p1.x, y: p1.y },
+                        { x: p2.x, y: p2.y }
+                    ],
                     start: { x: p1.x, y: p1.y, alt: safeAlt },
                     end: { x: p2.x, y: p2.y, alt: safeAlt }
                 };
             }
 
             State.simFlight = {
+                isPointProbe: false,
+                waypoints: selectedFlight.waypoints,
                 start: selectedFlight.start,
                 end: selectedFlight.end,
                 progress: 0,
@@ -8416,10 +9081,65 @@
             gameLoop(performance.now());
         }
 
+        window.generatePointProbe = function() {
+            const activeVolumes = getActiveAirspaceVolumes();
+            if (activeVolumes.length === 0) {
+                customAlert('Please define at least one active airspace volume in the Editor before starting a Point Probe.');
+                return;
+            }
+
+            disableCrossSectionView();
+            cancelAnimationFrame(State.animationFrameId);
+            State.explanationPlaying = false;
+            resetSimulatorUI();
+
+            const validLevels = getValidThousandFootLevels(activeVolumes);
+            let chosenPoint = null;
+            let chosenAlt = null;
+
+            for (let attempt = 0; attempt < 80; attempt++) {
+                const alt = validLevels[Math.floor(Math.random() * validLevels.length)];
+                const matchingVols = activeVolumes.filter(v => alt >= Number(v.floor) && alt <= Number(v.ceiling));
+                if (matchingVols.length === 0) continue;
+
+                const vol = matchingVols[Math.floor(Math.random() * matchingVols.length)];
+                const pt = getRandomPointInPolygon(vol.path);
+                const owning = getAirspaceAtPoint(pt.x, pt.y, alt, false);
+                if (owning && owning.sector) {
+                    chosenPoint = pt;
+                    chosenAlt = alt;
+                    break;
+                }
+            }
+
+            if (!chosenPoint) {
+                const fallbackVol = activeVolumes[Math.floor(Math.random() * activeVolumes.length)];
+                chosenPoint = getPolygonCentroid(fallbackVol.path);
+                chosenAlt = sampleAltitudeInStratum(fallbackVol.floor, fallbackVol.ceiling);
+            }
+
+            State.simFlight = {
+                isPointProbe: true,
+                waypoints: [
+                    { x: chosenPoint.x, y: chosenPoint.y },
+                    { x: chosenPoint.x, y: chosenPoint.y }
+                ],
+                start: { x: chosenPoint.x, y: chosenPoint.y, alt: chosenAlt },
+                end: { x: chosenPoint.x, y: chosenPoint.y, alt: chosenAlt },
+                progress: 0,
+                callsign: callsigns[Math.floor(Math.random() * callsigns.length)],
+                type: types[Math.floor(Math.random() * types.length)],
+                pausedAt: 0
+            };
+
+            pauseForQuiz();
+        };
+
         function stopSimulation() {
             State.simState = 'IDLE';
             State.simFlight = null;
             State.explanationPlaying = false;
+            routeDrawingBanner?.classList.add('hidden-visually');
             cancelAnimationFrame(State.animationFrameId);
             resetSimulatorUI();
             if (ThreeApp.initialized) ThreeApp.updateFlightVisuals();
@@ -8458,21 +9178,141 @@
             
             const flight = State.simFlight;
             const currentData = getFlightDataAtProgress(flight, flight.progress);
-            
-            let altText = `Level at ${formatAlt(flight.start.alt)}`;
-            if (flight.end.alt > flight.start.alt) altText = `Climbing (${formatAlt(flight.start.alt)} &rarr; ${formatAlt(flight.end.alt)})`;
-            else if (flight.end.alt < flight.start.alt) altText = `Descending (${formatAlt(flight.start.alt)} &rarr; ${formatAlt(flight.end.alt)})`;
+            const isProbe = Boolean(flight.isPointProbe);
 
-            flightInfoDisplay.innerHTML = `
-                <div>ID: <span class="text-white font-bold">${flight.callsign} (${flight.type})</span></div>
-                <div>PROFILE: <span class="text-white">${altText}</span></div>
-                <div>CURRENT ALT: <span class="text-radar-green font-bold">${formatAlt(currentData.alt)}</span></div>
-            `;
+            if (quizHeaderTitle) {
+                quizHeaderTitle.innerText = isProbe ? 'POINT PROBE' : 'SIMULATION PAUSED';
+            }
+            if (quizPromptLabel) {
+                quizPromptLabel.innerHTML = isProbe
+                    ? 'Which sector owns this aircraft?'
+                    : 'Sector Sequence (Current &rarr; End)';
+            }
+
+            userSectorSequenceDiv?.classList.toggle('hidden-visually', isProbe);
+            btnAddSector?.classList.toggle('hidden-visually', isProbe);
+            btnClearSequence?.classList.toggle('hidden-visually', isProbe);
+
+            if (isProbe) {
+                flightInfoDisplay.innerHTML = `
+                    <div>ID: <span class="text-white font-bold">${flight.callsign} (${flight.type})</span></div>
+                    <div>MODE: <span class="text-amber-300 font-semibold">Stationary Point Probe</span></div>
+                    <div>ALTITUDE: <span class="text-radar-green font-bold">${formatAlt(currentData.alt)}</span></div>
+                `;
+            } else {
+                const waypoints = getFlightWaypoints(flight);
+                const turnsCount = Math.max(0, waypoints.length - 2);
+                
+                let altText = `Level at ${formatAlt(flight.start.alt)}`;
+                if (flight.end.alt > flight.start.alt) altText = `Climbing (${formatAlt(flight.start.alt)} &rarr; ${formatAlt(flight.end.alt)})`;
+                else if (flight.end.alt < flight.start.alt) altText = `Descending (${formatAlt(flight.start.alt)} &rarr; ${formatAlt(flight.end.alt)})`;
+
+                flightInfoDisplay.innerHTML = `
+                    <div>ID: <span class="text-white font-bold">${flight.callsign} (${flight.type})</span></div>
+                    <div>ROUTE: <span class="text-sky-300 font-semibold">${turnsCount === 0 ? 'Direct (1 Leg)' : `${turnsCount + 1} Legs (${turnsCount} Turn${turnsCount > 1 ? 's' : ''})`}</span></div>
+                    <div>PROFILE: <span class="text-white">${altText}</span></div>
+                    <div>CURRENT ALT: <span class="text-radar-green font-bold">${formatAlt(currentData.alt)}</span></div>
+                `;
+            }
 
             quizContainer.classList.remove('hidden-visually');
         }
 
         document.getElementById('btn-start-scenario')?.addEventListener('click', generateScenario);
+        btnPointProbe?.addEventListener('click', generatePointProbe);
+
+        function updateRouteDrawingBannerUI() {
+            if (!routeDrawingBanner) return;
+            if (State.mode !== 'SIM' || State.simState !== 'DRAWING_ROUTE') {
+                routeDrawingBanner.classList.add('hidden-visually');
+                return;
+            }
+            routeDrawingBanner.classList.remove('hidden-visually');
+            const pts = (State.customRoute && Array.isArray(State.customRoute.points)) ? State.customRoute.points : [];
+            const count = pts.length;
+
+            if (routeDrawingStatus) {
+                if (count === 0) {
+                    routeDrawingStatus.innerText = 'Click or tap map to place start point';
+                } else if (count === 1) {
+                    routeDrawingStatus.innerText = '1 point set — add next waypoint';
+                } else {
+                    const turns = count - 2;
+                    routeDrawingStatus.innerText = `${count} points (${turns} turn${turns === 1 ? '' : 's'}) — add turn or Finish Route`;
+                }
+            }
+
+            if (btnRouteUndo) {
+                btnRouteUndo.disabled = count === 0;
+                btnRouteUndo.classList.toggle('opacity-40', count === 0);
+                btnRouteUndo.classList.toggle('cursor-not-allowed', count === 0);
+            }
+
+            if (btnRouteFinish) {
+                const canFinish = count >= 2;
+                btnRouteFinish.disabled = !canFinish;
+                btnRouteFinish.classList.toggle('opacity-40', !canFinish);
+                btnRouteFinish.classList.toggle('cursor-not-allowed', !canFinish);
+                btnRouteFinish.classList.toggle('hover:bg-blue-400', canFinish);
+            }
+        }
+
+        function addCustomRouteWaypoint(x, y) {
+            if (!State.customRoute || !Array.isArray(State.customRoute.points)) {
+                State.customRoute = { points: [] };
+            }
+            const pts = State.customRoute.points;
+            if (pts.length > 0) {
+                const last = pts[pts.length - 1];
+                const pxDist = Math.hypot((x - last.x) * State.worldW, (y - last.y) * State.worldH);
+                // Ignore accidental duplicate click on the exact same pixel (handled by dblclick if >= 2 points)
+                if (pxDist < 6 / (State.scale * State.zoom)) {
+                    if (pts.length >= 2) {
+                        finishCustomRouteDrawing();
+                    }
+                    return;
+                }
+            }
+            pts.push({ x, y });
+            State.customRoute.start = pts[0];
+            State.customRoute.end = pts[pts.length - 1];
+            updateRouteDrawingBannerUI();
+            draw();
+        }
+
+        function undoLastRoutePoint() {
+            if (!State.customRoute || !Array.isArray(State.customRoute.points) || State.customRoute.points.length === 0) return;
+            State.customRoute.points.pop();
+            const pts = State.customRoute.points;
+            State.customRoute.start = pts[0] || null;
+            State.customRoute.end = pts.length > 0 ? pts[pts.length - 1] : null;
+            updateRouteDrawingBannerUI();
+            draw();
+        }
+
+        function cancelCustomRouteDrawing() {
+            State.simState = 'IDLE';
+            State.customRoute = null;
+            routeDrawingBanner?.classList.add('hidden-visually');
+            tooltip.classList.add('hidden-visually');
+            draw();
+        }
+
+        function finishCustomRouteDrawing() {
+            if (!State.customRoute || !Array.isArray(State.customRoute.points) || State.customRoute.points.length < 2) return;
+            const pts = State.customRoute.points;
+            State.customRoute.start = pts[0];
+            State.customRoute.end = pts[pts.length - 1];
+            State.simState = 'IDLE';
+            routeDrawingBanner?.classList.add('hidden-visually');
+            tooltip.classList.add('hidden-visually');
+            draw();
+            showRouteAltModal();
+        }
+
+        btnRouteUndo?.addEventListener('click', undoLastRoutePoint);
+        btnRouteCancel?.addEventListener('click', cancelCustomRouteDrawing);
+        btnRouteFinish?.addEventListener('click', finishCustomRouteDrawing);
 
         btnDrawRoute?.addEventListener('click', () => {
             if (State.viewDimension === '3D') {
@@ -8484,8 +9324,9 @@
             disableCrossSectionView();
             stopSimulation();
             resetSimulatorUI();
-            State.simState = 'DRAWING_ROUTE_START';
-            State.customRoute = null;
+            State.simState = 'DRAWING_ROUTE';
+            State.customRoute = { points: [], start: null, end: null };
+            updateRouteDrawingBannerUI();
             draw();
         });
 
@@ -8499,6 +9340,7 @@
         btnCancelRoute?.addEventListener('click', () => {
             modalRouteAlt.classList.add('hidden-visually');
             State.customRoute = null;
+            routeDrawingBanner?.classList.add('hidden-visually');
             draw();
         });
 
@@ -8509,6 +9351,9 @@
             if (State.customRoute && State.customRoute.start && State.customRoute.end && activeVolumes.length > 0) {
                 const startPt = State.customRoute.start;
                 const endPt = State.customRoute.end;
+                const routeWaypoints = Array.isArray(State.customRoute.points) && State.customRoute.points.length >= 2
+                    ? State.customRoute.points.map(p => ({ ...p }))
+                    : [{ x: startPt.x, y: startPt.y }, { x: endPt.x, y: endPt.y }];
 
                 for (let i = 0; i < 150; i++) {
                     const sAlt = validLevels[Math.floor(Math.random() * validLevels.length)];
@@ -8519,6 +9364,7 @@
                     }
 
                     const candidate = {
+                        waypoints: routeWaypoints,
                         start: { x: startPt.x, y: startPt.y, alt: sAlt },
                         end: { x: endPt.x, y: endPt.y, alt: eAlt }
                     };
@@ -8569,9 +9415,17 @@
             disableCrossSectionView();
             resetSimulatorUI();
             
+            const routeWaypoints = (State.customRoute && Array.isArray(State.customRoute.points) && State.customRoute.points.length >= 2)
+                ? State.customRoute.points.map(p => ({ ...p }))
+                : [
+                    { x: State.customRoute.start.x, y: State.customRoute.start.y },
+                    { x: State.customRoute.end.x, y: State.customRoute.end.y }
+                ];
+
             State.simFlight = {
-                start: { x: State.customRoute.start.x, y: State.customRoute.start.y, alt: startAlt },
-                end: { x: State.customRoute.end.x, y: State.customRoute.end.y, alt: endAlt },
+                waypoints: routeWaypoints,
+                start: { x: routeWaypoints[0].x, y: routeWaypoints[0].y, alt: startAlt },
+                end: { x: routeWaypoints[routeWaypoints.length - 1].x, y: routeWaypoints[routeWaypoints.length - 1].y, alt: endAlt },
                 progress: 0,
                 callsign: callsigns[Math.floor(Math.random() * callsigns.length)],
                 type: types[Math.floor(Math.random() * types.length)],
@@ -8581,6 +9435,16 @@
         });
 
         document.getElementById('btn-submit-quiz')?.addEventListener('click', () => {
+            if (State.simFlight && State.simFlight.isPointProbe) {
+                const picked = selectQuizSector.value || State.userSequence[0];
+                if (!picked) {
+                    customAlert('Please select the sector that owns this aircraft before submitting.');
+                    return;
+                }
+                State.userSequence = [picked];
+                evaluateQuiz();
+                return;
+            }
             if (State.userSequence.length === 0) {
                 customAlert('Please add at least one sector to the sequence before submitting.');
                 return;
@@ -8590,7 +9454,20 @@
 
         function evaluateQuiz() {
             const flight = State.simFlight;
-            const expectedSequence = getFullSectorSequence(flight, flight.progress);
+            const isProbe = Boolean(flight && flight.isPointProbe);
+            let expectedSequence = [];
+
+            if (isProbe) {
+                const owning = getAirspaceAtPoint(flight.start.x, flight.start.y, flight.start.alt, false);
+                if (owning && owning.sector) {
+                    expectedSequence = [owning.sector.id];
+                }
+                if (State.userSequence.length === 0 && selectQuizSector.value) {
+                    State.userSequence = [selectQuizSector.value];
+                }
+            } else {
+                expectedSequence = getFullSectorSequence(flight, flight.progress);
+            }
 
             const isCorrect = State.userSequence.length === expectedSequence.length &&
                 State.userSequence.every((val, index) => val === expectedSequence[index]);
@@ -8604,8 +9481,8 @@
                 quizResults.className = 'mt-2 p-4 rounded border bg-red-900/30 border-red-500';
             }
 
-            const userStr = State.userSequence.map(id => getAirspaceNameById(id)).join(' &rarr; ');
-            const expectedStr = expectedSequence.map(id => getAirspaceNameById(id)).join(' &rarr; ');
+            const userStr = State.userSequence.map(id => getAirspaceNameById(id)).join(' &rarr; ') || 'None';
+            const expectedStr = expectedSequence.map(id => getAirspaceNameById(id)).join(' &rarr; ') || 'Uncontrolled / None';
 
             quizResults.innerHTML = `
                 <h3 class="font-bold text-base mb-2 ${isCorrect ? 'text-green-400' : 'text-red-400'}">
@@ -8613,27 +9490,107 @@
                 </h3>
                 <div class="text-xs space-y-2 text-slate-200 font-mono">
                     <div>
-                        <span class="text-slate-400 block">Your Sequence:</span>
+                        <span class="text-slate-400 block">${isProbe ? 'Your Answer:' : 'Your Sequence:'}</span>
                         <span class="${isCorrect ? 'text-green-300' : 'text-red-300'}">${userStr}</span>
                     </div>
                     <div>
-                        <span class="text-slate-400 block">Correct Sequence:</span>
+                        <span class="text-slate-400 block">${isProbe ? 'Correct Sector:' : 'Correct Sequence:'}</span>
                         <span class="text-white">${expectedStr}</span>
                     </div>
                 </div>
                 <div class="flex flex-col gap-2 mt-4">
                     <button onclick="startExplanation()" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded text-xs transition-colors shadow">
-                        Explanation &amp; Flight Replay (2D / 3D)
+                        ${isProbe ? 'Inspect Airspace (2D / 3D)' : 'Explanation &amp; Flight Replay (2D / 3D)'}
                     </button>
-                    <button onclick="generateScenario()" class="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs transition-colors">
-                        Next Scenario
-                    </button>
+                    <div class="flex gap-2">
+                        <button onclick="generatePointProbe()" class="flex-1 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-semibold rounded text-xs transition-colors">
+                            Next Point Probe
+                        </button>
+                        <button onclick="generateScenario()" class="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs transition-colors">
+                            Next Flight
+                        </button>
+                    </div>
                 </div>
             `;
         }
 
+        window.jumpToExplanationProgress = function(progressVal) {
+            if (!State.simFlight || State.simState !== 'EXPLANATION') return;
+            const clamped = Math.max(0, Math.min(1, Number(progressVal) || 0));
+            State.explanationPlaying = false;
+            State.explanationProgress = clamped;
+            if (btnExpPlayPause) btnExpPlayPause.innerText = 'Play';
+            if (expTimeline) {
+                expTimeline.value = Math.round(clamped * 1000);
+                updateSliderVisual(expTimeline);
+            }
+            draw();
+            if (ThreeApp.initialized) {
+                ThreeApp.updateFlightVisuals();
+            }
+        };
+
+        function renderExplanationTimelineMarkers(flight) {
+            if (!expTimelineMarkers || !expHandoffChips) return;
+            expTimelineMarkers.innerHTML = '';
+            expHandoffChips.innerHTML = '';
+
+            if (!flight || flight.isPointProbe) {
+                expHandoffChips.classList.add('hidden-visually');
+                return;
+            }
+
+            const { transitions } = getDetailedSectorRouteAnalysis(flight, 0);
+            if (transitions.length === 0) {
+                expHandoffChips.classList.add('hidden-visually');
+                return;
+            }
+
+            transitions.forEach((tr, idx) => {
+                const pct = Math.round(tr.progress * 100);
+                const altStr = formatAlt(tr.alt);
+                const label = `Handoff #${idx + 1} (${pct}% • ${altStr}): ${tr.fromName} → ${tr.toName}`;
+
+                // Clickable marker tick positioned along the slider track
+                const markerBtn = document.createElement('button');
+                markerBtn.type = 'button';
+                markerBtn.className = 'pointer-events-auto absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-6 flex items-center justify-center group focus:outline-none';
+                markerBtn.style.left = `calc(8px + (100% - 16px) * ${tr.progress.toFixed(4)})`;
+                markerBtn.title = `${label} — Click to jump to boundary crossing`;
+                markerBtn.innerHTML = `
+                    <span class="w-2.5 h-2.5 rotate-45 bg-amber-400 group-hover:bg-amber-300 border border-slate-950 shadow-md group-hover:scale-125 transition-transform block"></span>
+                `;
+                markerBtn.addEventListener('pointerdown', (e) => {
+                    e.stopPropagation();
+                });
+                markerBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    jumpToExplanationProgress(tr.progress);
+                });
+                expTimelineMarkers.appendChild(markerBtn);
+
+                // Quick-jump handoff pill inside the collapsible explanation body
+                const chipBtn = document.createElement('button');
+                chipBtn.type = 'button';
+                chipBtn.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-mono text-[10px] transition-colors';
+                chipBtn.title = label;
+                chipBtn.innerHTML = `<span class="w-1.5 h-1.5 rotate-45 bg-amber-400 inline-block flex-shrink-0"></span><span>${tr.toName}</span>`;
+                chipBtn.addEventListener('click', () => {
+                    jumpToExplanationProgress(tr.progress);
+                });
+                expHandoffChips.appendChild(chipBtn);
+            });
+
+            const headerSpan = document.createElement('span');
+            headerSpan.className = 'text-[10px] text-slate-400 font-semibold mr-1';
+            headerSpan.innerText = 'Handoffs:';
+            expHandoffChips.prepend(headerSpan);
+            expHandoffChips.classList.remove('hidden-visually');
+        }
+
         window.startExplanation = function() {
             if (!State.simFlight) return;
+            const isProbe = Boolean(State.simFlight.isPointProbe);
             if (!State.savedEditorVisibility) {
                 const secMap = new Map();
                 const volMap = new Map();
@@ -8649,9 +9606,9 @@
             if (isMobileView()) {
                 setSidebarCollapsed(true);
                 quizResults.classList.add('hidden-visually');
-                // Open Explanation mode in a collapsed state by default on mobile
-                expDetailsBody.classList.add('hidden-visually');
-                iconExpChevron?.classList.add('rotate-180');
+                // For Point Probe, expand details so Active Airspace & Visible Airspace toggle are immediately accessible
+                expDetailsBody.classList.toggle('hidden-visually', !isProbe);
+                iconExpChevron?.classList.toggle('rotate-180', !isProbe);
             } else {
                 expDetailsBody.classList.remove('hidden-visually');
                 iconExpChevron?.classList.remove('rotate-180');
@@ -8659,10 +9616,12 @@
 
             State.simState = 'EXPLANATION';
             State.explanationProgress = 0;
-            State.explanationPlaying = true;
+            State.explanationPlaying = !isProbe;
             expTimeline.value = 0;
             updateSliderVisual(expTimeline);
             btnExpPlayPause.innerText = 'Pause';
+            expPlaybackControls?.classList.toggle('hidden-visually', isProbe);
+            renderExplanationTimelineMarkers(State.simFlight);
             explanationOverlay.classList.remove('hidden-visually');
 
             if (State.sliceEnabled) {
@@ -8677,7 +9636,15 @@
                 ThreeApp.rebuildAirspaceMeshes();
                 ThreeApp.rebuildSlicePlane();
             }
-            explanationLoop(performance.now());
+            if (isProbe) {
+                draw();
+                if (ThreeApp.initialized) {
+                    ThreeApp.updateFlightVisuals();
+                }
+                if (expProgressPct) expProgressPct.innerText = 'PROBE';
+            } else {
+                explanationLoop(performance.now());
+            }
         };
 
         function explanationLoop(timestamp) {
