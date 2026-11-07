@@ -480,17 +480,31 @@
 
                         <div class="space-y-3">
                             <div>
-                                <label id="quiz-prompt-label" class="block text-xs font-semibold text-slate-300 mb-1.5">Sector Sequence (Current &rarr; End)</label>
+                                <div class="flex items-center justify-between gap-2 mb-1.5">
+                                    <label id="quiz-prompt-label" class="block text-xs font-semibold text-slate-300">Sector Sequence (Current &rarr; End)</label>
+                                    <button id="btn-clear-sequence" type="button" class="px-2 py-0.5 bg-red-950/60 hover:bg-red-900/70 text-red-300 border border-red-800/50 rounded transition-colors text-[10px] font-semibold">Clear</button>
+                                </div>
                                 <div id="user-sector-sequence" class="flex flex-wrap gap-1.5 mb-2.5 p-2.5 bg-slate-950/90 rounded border border-slate-700 min-h-[42px] max-h-28 overflow-y-auto items-center">
-                                    <span class="text-slate-500 text-xs italic">No sectors added yet...</span>
+                                    <span class="text-slate-500 text-xs italic">Tap a sector pill below to build sequence...</span>
                                 </div>
-                                <div class="flex gap-1.5 min-w-0">
-                                    <select id="quiz-sector-select" class="flex-1 min-w-0 truncate bg-slate-950 border border-slate-600 rounded p-2 text-xs text-white focus:border-radar-green outline-none">
-                                        <option value="">Select Airspace...</option>
-                                    </select>
-                                    <button id="btn-add-sector" class="flex-shrink-0 px-3.5 py-2 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded transition-colors text-xs">Add</button>
-                                    <button id="btn-clear-sequence" class="flex-shrink-0 px-3 py-2 bg-red-900/50 hover:bg-red-800/50 text-red-300 rounded transition-colors text-xs">Clear</button>
+
+                                <!-- Quick-Tap Sector Pills Grid grouped by Category -->
+                                <div id="quiz-sector-pills" class="space-y-2 max-h-48 overflow-y-auto p-2 bg-slate-950/80 rounded border border-slate-800 mb-2">
+                                    <!-- Populated by JS -->
                                 </div>
+
+                                <!-- Fallback Dropdown & Add Button -->
+                                <details class="group text-[11px] text-slate-400">
+                                    <summary class="cursor-pointer select-none hover:text-slate-200 py-0.5 flex items-center gap-1">
+                                        <span>Or use dropdown selector</span>
+                                    </summary>
+                                    <div class="flex gap-1.5 min-w-0 mt-1.5">
+                                        <select id="quiz-sector-select" class="flex-1 min-w-0 truncate bg-slate-950 border border-slate-600 rounded p-2 text-xs text-white focus:border-radar-green outline-none">
+                                            <option value="">Select Airspace...</option>
+                                        </select>
+                                        <button id="btn-add-sector" type="button" class="flex-shrink-0 px-3.5 py-2 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded transition-colors text-xs">Add</button>
+                                    </div>
+                                </details>
                             </div>
                             <button id="btn-submit-quiz" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded transition-colors text-xs md:text-sm shadow-lg shadow-blue-600/20">
                                 Submit Assessment
@@ -1175,10 +1189,8 @@
                     <div class="bg-slate-900/70 border border-slate-800 p-3.5 rounded-lg">
                         <h3 class="text-sm font-bold text-sky-400 mb-1.5">2. Assessing the Flight &amp; Handoff Replay</h3>
                         <ul class="list-disc list-inside space-y-1 text-slate-300">
-                            <li><strong>Submit Your Answer:</strong> In <strong>Point Probe</strong> mode, select the single owning sector and click <strong>Submit Assessment</strong>. For route scenarios, select each sector the aircraft enters in chronological order from start to finish, click <strong>Add</strong>, and click <strong>Submit Assessment</strong>.</li>
+                            <li><strong>Quick-Tap Sector Pills:</strong> Select a category (<strong>Center</strong>, <strong>Approach</strong>, or <strong>Military</strong>) and tap any sector pill to immediately append it to your sequence (or select it in <strong>Point Probe</strong> mode). Use the <strong>Back</strong> button to switch categories, then click <strong>Submit Assessment</strong>.</li>
                             <li><strong>Explanation &amp; Flight Replay (2D / 3D):</strong> After submitting, open the replay overlay to reveal the airspace and scrub through the flight timeline in 2D or 3D. Use the <strong>Visible Airspace</strong> toggle (<strong>Sectors on Route</strong> vs. <strong>All Sectors</strong>) to isolate only the volumes penetrated by the flight.</li>
-                            <li><strong>Handoff Jump Markers:</strong> During flight replay, click any <strong>amber diamond marker</strong> on the timeline slider—or tap any sector button in the <strong>Handoffs</strong> bar—to jump the aircraft directly to that exact sector boundary crossing.</li>
-                            <li><strong>Collapsible Floating Overlays:</strong> Tap the header of the <strong>Simulation Paused</strong> quiz card or the <strong>Explanation &amp; Flight Replay</strong> overlay anytime to collapse or expand its details for maximum radar visibility.</li>
                         </ul>
                     </div>
                 </div>
@@ -1480,6 +1492,7 @@
             simState: 'IDLE',
             customRoute: null,
             userSequence: [],
+            quizPillCategory: null, // null | 'CENTER' | 'APPROACH' | 'MILITARY'
             explanationProgress: 0,
             explanationPlaying: false,
             animationFrameId: null,
@@ -1579,6 +1592,7 @@
         const quizResults = document.getElementById('quiz-results');
         const flightInfoDisplay = document.getElementById('flight-info-display');
         const selectQuizSector = document.getElementById('quiz-sector-select');
+        const quizSectorPillsDiv = document.getElementById('quiz-sector-pills');
         const userSectorSequenceDiv = document.getElementById('user-sector-sequence');
         const btnAddSector = document.getElementById('btn-add-sector');
         const btnClearSequence = document.getElementById('btn-clear-sequence');
@@ -1966,7 +1980,7 @@
             },
             {
                 title: '7. Building & Submitting Your Sequence',
-                desc: 'Time to see how well you know your airspace! Select each sector you think the aircraft enters from start to finish. Click "Add" to put each sector into the sequence, and when you think you have it correct, hit "Submit Assessment" to check your answer. Make sure you factor in the altitude the flight will be at along its route. We have pre-filled the sequence for this flight so you can see how entries are queued.',
+                desc: 'Time to see how well you know your airspace! Choose a category (Center, Approach, or Military) and tap the sector pills in chronological order from start to finish to queue your sequence—or select the owning sector in Point Probe mode—then hit "Submit Assessment" to check your answer. We have pre-filled the sequence for this flight so you can see how entries are queued.',
                 targetId: 'quiz-container',
                 dimOpacity: 0.65,
                 onEnter: () => {
@@ -8687,6 +8701,7 @@
             const appOpts = State.appSectors.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
             const milOpts = State.milSectors.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
             selectQuizSector.innerHTML = `<option value="">Select Airspace...</option>` + centerOpts + appOpts + milOpts;
+            renderQuizSectorPills();
         }
 
         function getAirspaceNameById(id) {
@@ -8699,36 +8714,236 @@
             return 'Unknown';
         }
 
+        function getAirspaceColorById(id) {
+            const c = State.sectors.find(x => x.id === id);
+            if (c) return c.color || '#10b981';
+            const a = State.appSectors.find(x => x.id === id);
+            if (a) return a.color || '#f59e0b';
+            const m = State.milSectors.find(x => x.id === id);
+            if (m) return m.color || '#f43f5e';
+            return '#10b981';
+        }
+
+        function renderQuizSectorPills() {
+            if (!quizSectorPillsDiv) return;
+            const isProbe = Boolean(State.simFlight && State.simFlight.isPointProbe);
+            const selectedProbeId = isProbe ? (State.userSequence[0] || selectQuizSector.value || '') : '';
+
+            const groups = [
+                {
+                    key: 'CENTER',
+                    label: 'Center',
+                    badgeClass: 'text-emerald-400',
+                    btnClass: 'border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300',
+                    defaultColor: '#10b981',
+                    items: State.sectors
+                },
+                {
+                    key: 'APPROACH',
+                    label: 'Approach',
+                    badgeClass: 'text-amber-400',
+                    btnClass: 'border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300',
+                    defaultColor: '#f59e0b',
+                    items: State.appSectors
+                },
+                {
+                    key: 'MILITARY',
+                    label: 'Military',
+                    badgeClass: 'text-rose-400',
+                    btnClass: 'border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300',
+                    defaultColor: '#f43f5e',
+                    items: State.milSectors
+                }
+            ];
+
+            quizSectorPillsDiv.innerHTML = '';
+
+            // Reset selected category if it no longer has sectors
+            const activeGroup = groups.find(g => g.key === State.quizPillCategory);
+            if (!activeGroup) {
+                State.quizPillCategory = null;
+            }
+
+            // View 1: Top-level Category Selection Menu ("Center", "Approach", "Military")
+            if (!State.quizPillCategory) {
+                const header = document.createElement('div');
+                header.className = 'text-[10px] font-bold uppercase tracking-wider text-slate-400 px-0.5 mb-1.5';
+                header.innerText = 'Select Airspace Type';
+                quizSectorPillsDiv.appendChild(header);
+
+                const catGrid = document.createElement('div');
+                catGrid.className = 'grid grid-cols-3 gap-1.5';
+
+                groups.forEach(group => {
+                    const count = group.items ? group.items.length : 0;
+                    const isSelectedCategoryInProbe = isProbe && selectedProbeId && group.items.some(s => s.id === selectedProbeId);
+
+                    const catBtn = document.createElement('button');
+                    catBtn.type = 'button';
+                    catBtn.disabled = count === 0;
+                    catBtn.className = `py-2 px-2 rounded-md border text-xs font-bold transition-all flex flex-col items-center justify-center gap-0.5 ${
+                        count === 0
+                            ? 'border-slate-800 bg-slate-900/40 text-slate-600 cursor-not-allowed'
+                            : `${group.btnClass} active:scale-95 ${isSelectedCategoryInProbe ? 'ring-2 ring-white shadow' : ''}`
+                    }`;
+
+                    catBtn.innerHTML = `
+                        <span>${group.label}</span>
+                        <span class="text-[10px] font-mono opacity-75">(${count})</span>
+                    `;
+
+                    if (count > 0) {
+                        catBtn.addEventListener('click', () => {
+                            State.quizPillCategory = group.key;
+                            renderQuizSectorPills();
+                        });
+                    }
+
+                    catGrid.appendChild(catBtn);
+                });
+
+                quizSectorPillsDiv.appendChild(catGrid);
+                return;
+            }
+
+            // View 2: Sub-category Sector Pills with a Back Button
+            const navBar = document.createElement('div');
+            navBar.className = 'flex items-center justify-between gap-2 pb-1.5 mb-1.5 border-b border-slate-800';
+
+            const backBtn = document.createElement('button');
+            backBtn.type = 'button';
+            backBtn.className = 'px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-[11px] font-semibold flex items-center gap-1 transition-colors';
+            backBtn.innerHTML = `
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path></svg>
+                <span>Back</span>
+            `;
+            backBtn.addEventListener('click', () => {
+                State.quizPillCategory = null;
+                renderQuizSectorPills();
+            });
+
+            const catTitle = document.createElement('span');
+            catTitle.className = `text-[10px] font-bold uppercase tracking-wider ${activeGroup.badgeClass}`;
+            catTitle.innerText = `${activeGroup.label} Sectors`;
+
+            navBar.appendChild(backBtn);
+            navBar.appendChild(catTitle);
+            quizSectorPillsDiv.appendChild(navBar);
+
+            if (!activeGroup.items || activeGroup.items.length === 0) {
+                const emptyMsg = document.createElement('div');
+                emptyMsg.className = 'text-xs text-slate-500 italic py-1 px-0.5';
+                emptyMsg.innerText = `No ${activeGroup.label.toLowerCase()} sectors defined.`;
+                quizSectorPillsDiv.appendChild(emptyMsg);
+                return;
+            }
+
+            const grid = document.createElement('div');
+            grid.className = 'flex flex-wrap gap-1.5';
+
+            activeGroup.items.forEach(sec => {
+                const col = sec.color || activeGroup.defaultColor;
+                const isSelectedInProbe = isProbe && selectedProbeId === sec.id;
+                const isLastInSeq = !isProbe && State.userSequence.length > 0 && State.userSequence[State.userSequence.length - 1] === sec.id;
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.dataset.secId = sec.id;
+                btn.title = isProbe
+                    ? `Select ${sec.name}`
+                    : `Tap to append ${sec.name} to sequence`;
+
+                btn.className = `px-2.5 py-1.5 rounded-md text-xs font-mono font-semibold transition-all flex items-center gap-1.5 border text-left max-w-full active:scale-95 ${
+                    isSelectedInProbe
+                        ? 'ring-2 ring-white text-white shadow-lg scale-[1.02]'
+                        : (isLastInSeq ? 'ring-1 ring-emerald-400/70 text-white' : 'text-slate-100 hover:brightness-125')
+                }`;
+                btn.style.backgroundColor = isSelectedInProbe ? `${col}55` : `${col}26`;
+                btn.style.borderColor = isSelectedInProbe ? '#ffffff' : `${col}99`;
+
+                let statusDotHtml = `<span class="w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${col};"></span>`;
+                if (activeGroup.key === 'MILITARY') {
+                    const hotTag = sec.isHot ? 'HOT' : 'COLD';
+                    statusDotHtml = `<span class="px-1 py-0.2 text-[9px] rounded font-sans font-bold ${sec.isHot ? 'bg-rose-500 text-white' : 'bg-slate-800 text-slate-400'}">${hotTag}</span>`;
+                }
+
+                btn.innerHTML = `
+                    ${statusDotHtml}
+                    <span class="truncate">${sec.name}</span>
+                    ${isSelectedInProbe ? '<span class="ml-0.5 text-white font-bold">&check;</span>' : ''}
+                `;
+
+                btn.addEventListener('click', () => {
+                    handleQuizSectorPillTap(sec.id);
+                });
+
+                grid.appendChild(btn);
+            });
+
+            quizSectorPillsDiv.appendChild(grid);
+        }
+
+        function handleQuizSectorPillTap(secId) {
+            if (!secId) return;
+            const isProbe = Boolean(State.simFlight && State.simFlight.isPointProbe);
+            selectQuizSector.value = secId;
+
+            if (isProbe) {
+                State.userSequence = [secId];
+                renderQuizSectorPills();
+            } else {
+                State.userSequence.push(secId);
+                renderUserSequence();
+                renderQuizSectorPills();
+            }
+        }
+
         function renderUserSequence() {
             userSectorSequenceDiv.innerHTML = '';
             if (State.userSequence.length === 0) {
-                userSectorSequenceDiv.innerHTML = '<span class="text-slate-500 text-xs italic">No sectors added yet...</span>';
+                userSectorSequenceDiv.innerHTML = '<span class="text-slate-500 text-xs italic">Tap a sector pill below to build sequence...</span>';
                 return;
             }
             State.userSequence.forEach((secId, idx) => {
                 const pill = document.createElement('span');
-                pill.className = 'inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-mono bg-slate-800 text-radar-green border border-slate-600 max-w-full min-w-0';
+                const col = getAirspaceColorById(secId);
+                pill.className = 'inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-mono bg-slate-900 text-white border max-w-full min-w-0 shadow-sm';
+                pill.style.borderColor = `${col}99`;
                 const secName = getAirspaceNameById(secId);
-                pill.innerHTML = `<span class="truncate" title="${secName}">${idx + 1}. ${secName}</span> <button onclick="removeSequenceItem(${idx})" class="flex-shrink-0 text-slate-400 hover:text-red-400 ml-1">&times;</button>`;
+                pill.innerHTML = `
+                    <span class="w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${col};"></span>
+                    <span class="truncate" title="${secName}">${idx + 1}. ${secName}</span>
+                    <button type="button" onclick="removeSequenceItem(${idx})" class="flex-shrink-0 text-slate-400 hover:text-red-400 ml-0.5 font-bold">&times;</button>
+                `;
                 userSectorSequenceDiv.appendChild(pill);
             });
+            userSectorSequenceDiv.scrollTop = userSectorSequenceDiv.scrollHeight;
         }
 
         window.removeSequenceItem = function(idx) {
             State.userSequence.splice(idx, 1);
             renderUserSequence();
+            renderQuizSectorPills();
         };
 
         btnAddSector?.addEventListener('click', () => {
             const val = selectQuizSector.value;
             if (!val) return;
-            State.userSequence.push(val);
-            renderUserSequence();
+            handleQuizSectorPillTap(val);
+        });
+
+        selectQuizSector?.addEventListener('change', (e) => {
+            if (State.simFlight && State.simFlight.isPointProbe && e.target.value) {
+                State.userSequence = [e.target.value];
+                renderQuizSectorPills();
+            }
         });
 
         btnClearSequence?.addEventListener('click', () => {
             State.userSequence = [];
+            selectQuizSector.value = '';
             renderUserSequence();
+            renderQuizSectorPills();
         });
 
         function resetSimulatorUI() {
@@ -8753,8 +8968,10 @@
             State.hoveredVolumeId = null;
             State.hoveredSectorId = null;
             State.userSequence = [];
-            renderUserSequence();
+            State.quizPillCategory = null;
             selectQuizSector.value = '';
+            renderUserSequence();
+            renderQuizSectorPills();
         }
 
         const callsigns = ['AAL123', 'DAL45', 'JBU890', 'UAL231', 'N123AB', 'FDX44', 'SWA902'];
@@ -9066,6 +9283,7 @@
 
             State.simFlight = {
                 isPointProbe: false,
+                scenarioType: 'RANDOM',
                 waypoints: selectedFlight.waypoints,
                 start: selectedFlight.start,
                 end: selectedFlight.end,
@@ -9120,6 +9338,7 @@
 
             State.simFlight = {
                 isPointProbe: true,
+                scenarioType: 'PROBE',
                 waypoints: [
                     { x: chosenPoint.x, y: chosenPoint.y },
                     { x: chosenPoint.x, y: chosenPoint.y }
@@ -9192,6 +9411,7 @@
             userSectorSequenceDiv?.classList.toggle('hidden-visually', isProbe);
             btnAddSector?.classList.toggle('hidden-visually', isProbe);
             btnClearSequence?.classList.toggle('hidden-visually', isProbe);
+            renderQuizSectorPills();
 
             if (isProbe) {
                 flightInfoDisplay.innerHTML = `
@@ -9312,9 +9532,7 @@
 
         btnRouteUndo?.addEventListener('click', undoLastRoutePoint);
         btnRouteCancel?.addEventListener('click', cancelCustomRouteDrawing);
-        btnRouteFinish?.addEventListener('click', finishCustomRouteDrawing);
-
-        btnDrawRoute?.addEventListener('click', () => {
+        window.startDrawRouteMode = function() {
             if (State.viewDimension === '3D') {
                 setViewDimension('2D');
             }
@@ -9328,7 +9546,9 @@
             State.customRoute = { points: [], start: null, end: null };
             updateRouteDrawingBannerUI();
             draw();
-        });
+        };
+
+        btnDrawRoute?.addEventListener('click', startDrawRouteMode);
 
         function showRouteAltModal() {
             iRouteStartAlt.value = '';
@@ -9423,6 +9643,8 @@
                 ];
 
             State.simFlight = {
+                isPointProbe: false,
+                scenarioType: 'CUSTOM',
                 waypoints: routeWaypoints,
                 start: { x: routeWaypoints[0].x, y: routeWaypoints[0].y, alt: startAlt },
                 end: { x: routeWaypoints[routeWaypoints.length - 1].x, y: routeWaypoints[routeWaypoints.length - 1].y, alt: endAlt },
@@ -9484,6 +9706,31 @@
             const userStr = State.userSequence.map(id => getAirspaceNameById(id)).join(' &rarr; ') || 'None';
             const expectedStr = expectedSequence.map(id => getAirspaceNameById(id)).join(' &rarr; ') || 'Uncontrolled / None';
 
+            const scenarioType = flight && flight.scenarioType
+                ? flight.scenarioType
+                : (isProbe ? 'PROBE' : 'RANDOM');
+
+            let nextActionBtnHtml = '';
+            if (scenarioType === 'PROBE') {
+                nextActionBtnHtml = `
+                    <button onclick="generatePointProbe()" class="w-full py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-semibold rounded text-xs transition-colors">
+                        Next Point Probe
+                    </button>
+                `;
+            } else if (scenarioType === 'CUSTOM') {
+                nextActionBtnHtml = `
+                    <button onclick="startDrawRouteMode()" class="w-full py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 font-semibold rounded text-xs transition-colors">
+                        Draw New Route
+                    </button>
+                `;
+            } else {
+                nextActionBtnHtml = `
+                    <button onclick="generateScenario()" class="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded text-xs transition-colors">
+                        Next Random Flight
+                    </button>
+                `;
+            }
+
             quizResults.innerHTML = `
                 <h3 class="font-bold text-base mb-2 ${isCorrect ? 'text-green-400' : 'text-red-400'}">
                     ${isCorrect ? 'Assessment Passed!' : 'Assessment Incorrect'}
@@ -9502,14 +9749,7 @@
                     <button onclick="startExplanation()" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded text-xs transition-colors shadow">
                         ${isProbe ? 'Inspect Airspace (2D / 3D)' : 'Explanation &amp; Flight Replay (2D / 3D)'}
                     </button>
-                    <div class="flex gap-2">
-                        <button onclick="generatePointProbe()" class="flex-1 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-semibold rounded text-xs transition-colors">
-                            Next Point Probe
-                        </button>
-                        <button onclick="generateScenario()" class="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs transition-colors">
-                            Next Flight
-                        </button>
-                    </div>
+                    ${nextActionBtnHtml}
                 </div>
             `;
         }
