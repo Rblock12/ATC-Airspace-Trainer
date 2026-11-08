@@ -3134,11 +3134,14 @@
                 return false;
             }
 
+            const isStrictlyInside = (pt, poly) =>
+                !isPointOnPolygonBoundary(pt, poly, tol) && isPointInPolygon(pt, poly);
+
             for (let p of polyA) {
-                if (!isPointOnPolygonBoundary(p, polyB, tol) && isPointInPolygon(p, polyB)) return true;
+                if (isStrictlyInside(p, polyB)) return true;
             }
             for (let p of polyB) {
-                if (!isPointOnPolygonBoundary(p, polyA, tol) && isPointInPolygon(p, polyA)) return true;
+                if (isStrictlyInside(p, polyA)) return true;
             }
 
             for (let i = 0; i < polyA.length; i++) {
@@ -3149,13 +3152,48 @@
                 }
             }
 
+            // Check interior sample points along each edge (catches chords between snapped vertices/edges that cut across the other polygon)
+            const edgeSamples = [0.25, 0.5, 0.75];
+            for (let i = 0; i < polyA.length; i++) {
+                const a1 = polyA[i], a2 = polyA[(i + 1) % polyA.length];
+                if (Math.hypot(a2.x - a1.x, a2.y - a1.y) <= tol * 2) continue;
+                for (let t of edgeSamples) {
+                    const samplePt = { x: a1.x + (a2.x - a1.x) * t, y: a1.y + (a2.y - a1.y) * t };
+                    if (isStrictlyInside(samplePt, polyB)) return true;
+                }
+            }
+            for (let j = 0; j < polyB.length; j++) {
+                const b1 = polyB[j], b2 = polyB[(j + 1) % polyB.length];
+                if (Math.hypot(b2.x - b1.x, b2.y - b1.y) <= tol * 2) continue;
+                for (let t of edgeSamples) {
+                    const samplePt = { x: b1.x + (b2.x - b1.x) * t, y: b1.y + (b2.y - b1.y) * t };
+                    if (isStrictlyInside(samplePt, polyA)) return true;
+                }
+            }
+
+            // Check ear-triangle centroids for polygons that share multiple consecutive boundary vertices/edges
+            for (let i = 0; i < polyA.length; i++) {
+                const p0 = polyA[i];
+                const p1 = polyA[(i + 1) % polyA.length];
+                const p2 = polyA[(i + 2) % polyA.length];
+                const triCenter = { x: (p0.x + p1.x + p2.x) / 3, y: (p0.y + p1.y + p2.y) / 3 };
+                if (isStrictlyInside(triCenter, polyA) && isStrictlyInside(triCenter, polyB)) return true;
+            }
+            for (let j = 0; j < polyB.length; j++) {
+                const p0 = polyB[j];
+                const p1 = polyB[(j + 1) % polyB.length];
+                const p2 = polyB[(j + 2) % polyB.length];
+                const triCenter = { x: (p0.x + p1.x + p2.x) / 3, y: (p0.y + p1.y + p2.y) / 3 };
+                if (isStrictlyInside(triCenter, polyB) && isStrictlyInside(triCenter, polyA)) return true;
+            }
+
             const anchorA = getVolumeVisualAnchor({ path: polyA });
-            if (isPointInPolygon(anchorA, polyA) && !isPointOnPolygonBoundary(anchorA, polyB, tol) && isPointInPolygon(anchorA, polyB)) {
+            if (isPointInPolygon(anchorA, polyA) && isStrictlyInside(anchorA, polyB)) {
                 return true;
             }
 
             const anchorB = getVolumeVisualAnchor({ path: polyB });
-            if (isPointInPolygon(anchorB, polyB) && !isPointOnPolygonBoundary(anchorB, polyA, tol) && isPointInPolygon(anchorB, polyA)) {
+            if (isPointInPolygon(anchorB, polyB) && isStrictlyInside(anchorB, polyA)) {
                 return true;
             }
 
@@ -4440,9 +4478,18 @@
 
                 let isVertexInsideConflict = false;
                 if (hasConflicts) {
-                    isVertexInsideConflict = State.conflictResolution.conflicts.some(c =>
-                        !isPointOnPolygonBoundary(p, c.volume.path) && isPointInPolygon(p, c.volume.path)
-                    );
+                    const prevP = State.drawingPoints[(idx - 1 + State.drawingPoints.length) % State.drawingPoints.length];
+                    const nextP = State.drawingPoints[(idx + 1) % State.drawingPoints.length];
+                    const midPrev = { x: (p.x + prevP.x) / 2, y: (p.y + prevP.y) / 2 };
+                    const midNext = { x: (p.x + nextP.x) / 2, y: (p.y + nextP.y) / 2 };
+
+                    isVertexInsideConflict = State.conflictResolution.conflicts.some(c => {
+                        const cPath = c.volume.path;
+                        const strictIn = (pt) => !isPointOnPolygonBoundary(pt, cPath) && isPointInPolygon(pt, cPath);
+                        if (strictIn(p)) return true;
+                        if (isPointOnPolygonBoundary(p, cPath) && (strictIn(midPrev) || strictIn(midNext))) return true;
+                        return false;
+                    });
                 }
 
                 if (inConflictMode) {
